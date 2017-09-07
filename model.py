@@ -25,7 +25,7 @@ def dataset_files(root):
 
 
 class DCGAN(object):
-    def __init__(self, sess, image_size=64, is_crop=False,
+    def __init__(self, sess, image_size=64, is_crop=True,
                  batch_size=64, sample_size=64, lowres=8,
                  z_dim=100, gf_dim=64, df_dim=64,
                  gfc_dim=1024, dfc_dim=1024, c_dim=3,
@@ -85,7 +85,7 @@ class DCGAN(object):
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')
         self.images = tf.placeholder(
-            tf.float32, [None] + self.image_shape, name='real_images')
+            tf.float32, shape = [None] + self.image_shape, name='real_images')
         self.lowres_images = tf.reduce_mean(tf.reshape(self.images,
             [self.batch_size, self.lowres_size, self.lowres,
              self.lowres_size, self.lowres, self.c_dim]), [2, 4])
@@ -150,7 +150,7 @@ class DCGAN(object):
         d_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
                           .minimize(self.d_loss, var_list=self.d_vars)
         g_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
-                          .minimize(self.g_loss, var_list=self.g_vars)                
+                          .minimize(self.g_loss, var_list=self.g_vars)
         try:
             tf.global_variables_initializer().run()
         except:
@@ -412,13 +412,13 @@ Initializing a new one.
             h2 = lrelu(self.d_bns[1](conv2d(h1, self.df_dim*4, name='d_h2_conv'), self.is_training))
             h3 = lrelu(self.d_bns[2](conv2d(h2, self.df_dim*8, name='d_h3_conv'), self.is_training))
             h4 = linear(tf.reshape(h3, [-1, 8192]), 1, 'd_h4_lin')
-    
+
             return tf.nn.sigmoid(h4), h4
 
     def generator(self, z):
         with tf.variable_scope("generator") as scope:
             self.z_, self.h0_w, self.h0_b = linear(z, self.gf_dim*8*4*4, 'g_h0_lin', with_w=True)
-    
+
             # TODO: Nicer iteration pattern here. #readability
             hs = [None]
             hs[0] = tf.reshape(self.z_, [-1, 4, 4, self.gf_dim * 8])
@@ -443,7 +443,7 @@ Initializing a new one.
             name = 'g_h{}'.format(i)
             hs[i], _, _ = conv2d_transpose(hs[i - 1],
                 [self.batch_size, size, size, 3], name=name, with_w=True)
-    
+
             return tf.nn.tanh(hs[i])
 
     def save(self, checkpoint_dir, step):

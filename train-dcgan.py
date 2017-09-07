@@ -36,6 +36,6 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 with tf.Session(config=config) as sess:
     dcgan = DCGAN(sess, image_size=FLAGS.image_size, batch_size=FLAGS.batch_size,
-                  is_crop=False, checkpoint_dir=FLAGS.checkpoint_dir)
+                  is_crop=True, checkpoint_dir=FLAGS.checkpoint_dir)
 
     dcgan.train(FLAGS)
