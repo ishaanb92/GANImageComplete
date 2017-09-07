@@ -50,17 +50,24 @@ def returnScore():
     imagePath = os.path.join(os.getcwd(),'completions','completed','*.jpg')
     refFile = open(os.path.join(os.getcwd(),'completions','before.jpg'))
     refImg = cv2.imread(refFile.name)
+    refMatches = computeMatchesSIFT(refImg,refImg)
     images = glob.glob(imagePath)
     metricDict = {}
     for image in images:
         testImg = cv2.imread(image)
         simSIFT = computeMatchesSIFT(refImg,testImg)
+        simScore = float(simSIFT)/float(refMatches)
         pathSet = image.split(os.sep)
         idx = pathSet[-1].split(".")
-        metricDict[int(idx[0])] = simSIFT
-        print('Similarity score for {0} : {1}'.format(pathSet[-1],simSIFT))
+        metricDict[int(idx[0])] = simScore
+        print('Similarity score for {0} : {1}'.format(pathSet[-1],simScore))
     # Sort the dict based on key which is the iteration ID
-    orderedMetrics = collections.OrderedDict(sorted(metricDict.items()))
+    orderedMetrics = sorted(metricDict.items())
+    x,y = zip(*orderedMetrics)
+    plt.plot(x,y)
+    plt.ylabel('Similarity Score (SIFT)')
+    plt.xlabel('Iteration')
+    plt.show()
 
 if __name__ == "__main__":
     returnScore()
