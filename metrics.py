@@ -1,18 +1,19 @@
 import cv2
 import os
+import glob
 import numpy as np
+import collections
+import matplotlib.pylab as plt
 
 def computeMatchesORB(img1,img2):
     orb = cv2.ORB_create()
     sim_metric = 0
     # Keypoints and descriptors for the objects
     kp_ref, des_ref = orb.detectAndCompute(img1,None)
-    print(des_ref)
     kp_test, des_test = orb.detectAndCompute(img2,None)
     # Use Brute Force matcher + Hamming distance since binary features
     bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
     matches = bf.match(des_ref,des_test)
-    print(matches)
     # Need to draw only good matches, so create a mask
     goodMatches = []
     # ratio test as per Lowe's paper
@@ -21,16 +22,45 @@ def computeMatchesORB(img1,img2):
         if m.distance < 64:
             goodMatches.append(m)
             sim_metric = sim_metric + 1
-    print(goodMatches)
     img3 = cv2.drawMatches(img1,kp_ref,img2,kp_test,goodMatches,outImg=None,flags=2)
-    return sim_metric,img3
+    return sim_metric
+
+def computeMatchesSIFT(img1,img2):
+    sift = cv2.xfeatures2d.SIFT_create()
+    sim_metric = 0
+    # Keypoints and descriptors for the objects
+    kp_ref, des_ref = sift.detectAndCompute(img1,None)
+    kp_test, des_test = sift.detectAndCompute(img2,None)
+    # FLANN parameters
+    FLANN_INDEX_KDTREE = 0
+    index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+    search_params = dict(checks=50)   # or pass empty dictionary
+    flann = cv2.FlannBasedMatcher(index_params,search_params)
+    matches = flann.knnMatch(des_ref,des_test,k=2)
+    # Need to draw only good matches, so create a mask
+    matchesMask = [[0,0] for i in range(len(matches))]
+    # ratio test as per Lowe's paper
+    for i,(m,n) in enumerate(matches):
+        if m.distance < 0.7*n.distance:
+            matchesMask[i]=[1,0]
+            sim_metric = sim_metric + 1
+    return sim_metric
 
 def returnScore():
-    initial = cv2.imread('before.jpg')
-    final = cv2.imread('final.jpg')
-    sim,res = computeMatchesORB(initial,initial)
-    print('Metric obtained from ORB : {0}'.format(sim))
-    cv2.imwrite('result.png',res)
+    imagePath = os.path.join(os.getcwd(),'completions','completed','*.jpg')
+    refFile = open(os.path.join(os.getcwd(),'completions','before.jpg'))
+    refImg = cv2.imread(refFile.name)
+    images = glob.glob(imagePath)
+    metricDict = {}
+    for image in images:
+        testImg = cv2.imread(image)
+        simSIFT = computeMatchesSIFT(refImg,testImg)
+        pathSet = image.split(os.sep)
+        idx = pathSet[-1].split(".")
+        metricDict[int(idx[0])] = simSIFT
+        print('Similarity score for {0} : {1}'.format(pathSet[-1],simSIFT))
+    # Sort the dict based on key which is the iteration ID
+    orderedMetrics = collections.OrderedDict(sorted(metricDict.items()))
 
 if __name__ == "__main__":
     returnScore()

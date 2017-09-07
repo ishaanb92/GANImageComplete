@@ -312,17 +312,17 @@ Initializing a new one.
             nRows = np.ceil(batchSz/8)
             nCols = min(8, batchSz)
             save_images(batch_images[:batchSz,:,:,:], [nRows,nCols],
-                        os.path.join(config.outDir, 'before.png'))
+                        os.path.join(config.outDir, 'before.jpg'))
             masked_images = np.multiply(batch_images, mask)
             save_images(masked_images[:batchSz,:,:,:], [nRows,nCols],
-                        os.path.join(config.outDir, 'masked.png'))
+                        os.path.join(config.outDir, 'masked.jpg'))
             if lowres_mask.any():
                 lowres_images = np.reshape(batch_images, [self.batch_size, self.lowres_size, self.lowres,
                     self.lowres_size, self.lowres, self.c_dim]).mean(4).mean(2)
                 lowres_images = np.multiply(lowres_images, lowres_mask)
                 lowres_images = np.repeat(np.repeat(lowres_images, self.lowres, 1), self.lowres, 2)
                 save_images(lowres_images[:batchSz,:,:,:], [nRows,nCols],
-                            os.path.join(config.outDir, 'lowres.png'))
+                            os.path.join(config.outDir, 'lowres.jpg'))
             for img in range(batchSz):
                 with open(os.path.join(config.outDir, 'logs/hats_{:02d}.log'.format(img)), 'a') as f:
                     f.write('iter loss ' +
@@ -348,12 +348,12 @@ Initializing a new one.
                 if i % config.outInterval == 0:
                     print(i, np.mean(loss[0:batchSz]))
                     imgName = os.path.join(config.outDir,
-                                           'hats_imgs/{:04d}.png'.format(i))
+                                           'hats_imgs/{:04d}.jpg'.format(i))
                     nRows = np.ceil(batchSz/8)
                     nCols = min(8, batchSz)
                     save_images(G_imgs[:batchSz,:,:,:], [nRows,nCols], imgName)
                     if lowres_mask.any():
-                        imgName = imgName[:-4] + '.lowres.png'
+                        imgName = imgName[:-4] + '.lowres.jpg'
                         save_images(np.repeat(np.repeat(lowres_G_imgs[:batchSz,:,:,:],
                                               self.lowres, 1), self.lowres, 2),
                                     [nRows,nCols], imgName)
@@ -361,7 +361,7 @@ Initializing a new one.
                     inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                     completed = masked_images + inv_masked_hat_images
                     imgName = os.path.join(config.outDir,
-                                           'completed/{:04d}.png'.format(i))
+                                           'completed/{:04d}.jpg'.format(i))
                     save_images(completed[:batchSz,:,:,:], [nRows,nCols], imgName)
 
                 if config.approach == 'adam':
