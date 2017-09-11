@@ -12,6 +12,7 @@ import itertools
 from glob import glob
 import tensorflow as tf
 from six.moves import xrange
+import shutil
 
 from ops import *
 from utils import *
@@ -244,14 +245,17 @@ Initializing a new one.
 
 
     def complete(self, config):
-        def make_dir(name):
+        def make_dir(outDir,name):
             # Works on python 2.7, where exist_ok arg to makedirs isn't available.
-            p = os.path.join(config.outDir, name)
+            p = os.path.join(outDir, name)
             if not os.path.exists(p):
                 os.makedirs(p)
-        make_dir('hats_imgs')
-        make_dir('completed')
-        make_dir('logs')
+
+        if not os.path.exists(config.outDir):
+            os.makedirs(config.outDir)
+        else:
+            shutil.rmtree(config.outDir)
+            os.makedirs(config.outDir)
 
         try:
             tf.global_variables_initializer().run()
@@ -261,7 +265,10 @@ Initializing a new one.
         isLoaded = self.load(self.checkpoint_dir)
         assert(isLoaded)
 
-        nImgs = len(config.imgs)
+        # Get list of all images from the test_dir
+        testImgs = dataset_files(config.imgs)
+        nImgs = len(testImgs)
+        print('Number of images : {}'.format(nImgs))
 
         batch_idxs = int(np.ceil(nImgs/self.batch_size))
         lowres_mask = np.zeros(self.lowres_shape)
@@ -295,7 +302,7 @@ Initializing a new one.
             l = idx*self.batch_size
             u = min((idx+1)*self.batch_size, nImgs)
             batchSz = u-l
-            batch_files = config.imgs[l:u]
+            batch_files = testImgs[l:u]
             batch = [get_image(batch_file, self.image_size, is_crop=self.is_crop)
                      for batch_file in batch_files]
             batch_images = np.array(batch).astype(np.float32)
@@ -312,19 +319,25 @@ Initializing a new one.
             nRows = np.ceil(batchSz/8)
             nCols = min(8, batchSz)
             save_images(batch_images[:batchSz,:,:,:], [nRows,nCols],
-                        os.path.join(config.outDir, 'before.jpg'))
+                    os.path.join(config.outDir, 'before_{:04d}.jpg'.format(idx)))
             masked_images = np.multiply(batch_images, mask)
             save_images(masked_images[:batchSz,:,:,:], [nRows,nCols],
-                        os.path.join(config.outDir, 'masked.jpg'))
+                    os.path.join(config.outDir, 'masked_{:04d}.jpg'.format(idx)))
             if lowres_mask.any():
                 lowres_images = np.reshape(batch_images, [self.batch_size, self.lowres_size, self.lowres,
                     self.lowres_size, self.lowres, self.c_dim]).mean(4).mean(2)
                 lowres_images = np.multiply(lowres_images, lowres_mask)
                 lowres_images = np.repeat(np.repeat(lowres_images, self.lowres, 1), self.lowres, 2)
                 save_images(lowres_images[:batchSz,:,:,:], [nRows,nCols],
-                            os.path.join(config.outDir, 'lowres.jpg'))
+                        os.path.join(config.outDir,'lowres_{:04d}.jpg'.format(idx)))
+
+            # Create folders to save stuff
             for img in range(batchSz):
-                with open(os.path.join(config.outDir, 'logs/hats_{:02d}.log'.format(img)), 'a') as f:
+                outDir = os.path.join(config.outDir,'{:4d}'.format(idx))
+                make_dir(outDir,'hats_imgs')
+                make_dir(outDir,'completed')
+                make_dir(outDir,'logs')
+                with open(os.path.join(outDir,'logs/hats_{:02d}.log'.format(img)), 'a') as f:
                     f.write('iter loss ' +
                             ' '.join(['z{}'.format(zi) for zi in range(self.z_dim)]) +
                             '\n')
@@ -341,13 +354,14 @@ Initializing a new one.
                 loss, g, G_imgs, lowres_G_imgs = self.sess.run(run, feed_dict=fd)
 
                 for img in range(batchSz):
-                    with open(os.path.join(config.outDir, 'logs/hats_{:02d}.log'.format(img)), 'ab') as f:
+                    #print('Batch size is {}'.format(batchSz))
+                    with open(os.path.join(outDir, 'logs/hats_{:02d}.log'.format(img)), 'ab') as f:
                         f.write('{} {} '.format(i, loss[img]).encode())
                         np.savetxt(f, zhats[img:img+1])
 
                 if i % config.outInterval == 0:
                     print(i, np.mean(loss[0:batchSz]))
-                    imgName = os.path.join(config.outDir,
+                    imgName = os.path.join(outDir,
                                            'hats_imgs/{:04d}.jpg'.format(i))
                     nRows = np.ceil(batchSz/8)
                     nCols = min(8, batchSz)
@@ -360,7 +374,7 @@ Initializing a new one.
 
                     inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                     completed = masked_images + inv_masked_hat_images
-                    imgName = os.path.join(config.outDir,
+                    imgName = os.path.join(outDir,
                                            'completed/{:04d}.jpg'.format(i))
                     save_images(completed[:batchSz,:,:,:], [nRows,nCols], imgName)
 

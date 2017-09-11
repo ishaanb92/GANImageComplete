@@ -60,7 +60,6 @@ def returnScore():
         pathSet = image.split(os.sep)
         idx = pathSet[-1].split(".")
         metricDict[int(idx[0])] = simScore
-        print('Similarity score for {0} : {1}'.format(pathSet[-1],simScore))
     # Sort the dict based on key which is the iteration ID
     orderedMetrics = sorted(metricDict.items())
     x,y = zip(*orderedMetrics)
