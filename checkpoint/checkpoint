@@ -1,2 +1,2 @@
-model_checkpoint_path: "DCGAN.model-60502"
-all_model_checkpoint_paths: "DCGAN.model-60502"
+model_checkpoint_path: "DCGAN.model-79002"
+all_model_checkpoint_paths: "DCGAN.model-79002"
