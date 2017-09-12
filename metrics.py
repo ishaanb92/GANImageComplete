@@ -7,6 +7,10 @@ import matplotlib.pylab as plt
 import argparse
 import shutil
 
+# Author : Ishaan Bhat
+# Email : i.r.bhat@student.tue.nl
+
+
 def computeMatchesORB(img1,img2):
     orb = cv2.ORB_create()
     sim_metric = 0
@@ -48,10 +52,12 @@ def computeMatchesSIFT(img1,img2):
             sim_metric = sim_metric + 1
     return sim_metric
 
+# Functions to compute metrics to be added here ...
+
 def returnScore():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--images",type=str,help="Folder name for images")
-    parser.add_argument("--num_images",type=int,help="Number of images to be analyzed")
+    parser.add_argument("--images",type=str,default="completions",help="Folder name for images")
+    parser.add_argument("--num_images",type=int,default=10,help="Number of images to be analyzed")
     args = parser.parse_args()
 
     # Create a dir to store results
@@ -62,6 +68,8 @@ def returnScore():
         os.makedirs(os.path.join(os.getcwd(),args.images,'results'))
 
     resultPath = os.path.join(os.getcwd(),args.images,'results')
+
+    # For each image completed
     for img in range(0,args.num_images):
         imagePath = os.path.join(os.getcwd(),args.images,'{:04d}'.format(img),'completed','*.jpg')
         refFile = open(os.path.join(os.getcwd(),args.images,'before_{:04d}.jpg'.format(img)))
@@ -70,21 +78,32 @@ def returnScore():
         images = glob.glob(imagePath)
         metricDict = {}
         print('Collecting metrics for {} image'.format(img))
+        # For each checkpointed iteration of completion (per-image)
         for image in images:
             testImg = cv2.imread(image)
+            # Computing the similarity metric
             simSIFT = computeMatchesSIFT(refImg,testImg)
             simScore = float(simSIFT)/float(refMatches)
             pathSet = image.split(os.sep)
             idx = pathSet[-1].split(".")
+            # Creating a dictionary with key:value as  IterationID:SimilarityScore
             metricDict[int(idx[0])] = simScore
+
+            # Add code to compute alternative metrics here (PSNR, MSE etc ..)
+            # Store these in a dictionary similar to as done above
+            # Order it once metrics for all intermediate images are calculated (as shown below)
+
         # Sort the dict based on key which is the iteration ID
         orderedMetrics = sorted(metricDict.items())
         x,y = zip(*orderedMetrics)
         fig = plt.figure()
         ax = fig.add_subplot(111)
+        # Plot the ordered dictionary
         ax.plot(x,y)
         plt.ylabel('Similarity Score (SIFT)')
         plt.xlabel('Iteration')
+
+        # Save the graph as an image
         figPath = os.path.join(resultPath,'res_{:04d}.png'.format(img))
         plt.savefig(figPath)
 
