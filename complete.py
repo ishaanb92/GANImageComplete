@@ -32,7 +32,7 @@ parser.add_argument('--maskType', type=str,
                     choices=['random', 'center', 'left', 'full', 'grid', 'lowres'],
                     default='center')
 parser.add_argument('--centerScale', type=float, default=0.4)
-parser.add_argument('--imgs', type=str) # Directory with the test images
+parser.add_argument('--imgs', type=str, default='test_set') # Directory with the test images
 
 args = parser.parse_args()
 
