@@ -333,7 +333,7 @@ Initializing a new one.
 
             # Create folders to save stuff
             for img in range(batchSz):
-                outDir = os.path.join(config.outDir,'{:4d}'.format(idx))
+                outDir = os.path.join(config.outDir,'{:04d}'.format(idx))
                 make_dir(outDir,'hats_imgs')
                 make_dir(outDir,'completed')
                 make_dir(outDir,'logs')

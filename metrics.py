@@ -4,6 +4,8 @@ import glob
 import numpy as np
 import collections
 import matplotlib.pylab as plt
+import argparse
+import shutil
 
 def computeMatchesORB(img1,img2):
     orb = cv2.ORB_create()
@@ -47,26 +49,44 @@ def computeMatchesSIFT(img1,img2):
     return sim_metric
 
 def returnScore():
-    imagePath = os.path.join(os.getcwd(),'completions','completed','*.jpg')
-    refFile = open(os.path.join(os.getcwd(),'completions','before.jpg'))
-    refImg = cv2.imread(refFile.name)
-    refMatches = computeMatchesSIFT(refImg,refImg)
-    images = glob.glob(imagePath)
-    metricDict = {}
-    for image in images:
-        testImg = cv2.imread(image)
-        simSIFT = computeMatchesSIFT(refImg,testImg)
-        simScore = float(simSIFT)/float(refMatches)
-        pathSet = image.split(os.sep)
-        idx = pathSet[-1].split(".")
-        metricDict[int(idx[0])] = simScore
-    # Sort the dict based on key which is the iteration ID
-    orderedMetrics = sorted(metricDict.items())
-    x,y = zip(*orderedMetrics)
-    plt.plot(x,y)
-    plt.ylabel('Similarity Score (SIFT)')
-    plt.xlabel('Iteration')
-    plt.show()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--images",type=str,help="Folder name for images")
+    parser.add_argument("--num_images",type=int,help="Number of images to be analyzed")
+    args = parser.parse_args()
+
+    # Create a dir to store results
+    if not os.path.exists(os.path.join(os.getcwd(),args.images,'results')):
+        os.makedirs(os.path.join(os.getcwd(),args.images,'results'))
+    else:
+        shutil.rmtree(os.path.join(os.getcwd(),args.images,'results'))
+        os.makedirs(os.path.join(os.getcwd(),args.images,'results'))
+
+    resultPath = os.path.join(os.getcwd(),args.images,'results')
+    for img in range(0,args.num_images):
+        imagePath = os.path.join(os.getcwd(),args.images,'{:04d}'.format(img),'completed','*.jpg')
+        refFile = open(os.path.join(os.getcwd(),args.images,'before_{:04d}.jpg'.format(img)))
+        refImg = cv2.imread(refFile.name)
+        refMatches = computeMatchesSIFT(refImg,refImg)
+        images = glob.glob(imagePath)
+        metricDict = {}
+        print('Collecting metrics for {} image'.format(img))
+        for image in images:
+            testImg = cv2.imread(image)
+            simSIFT = computeMatchesSIFT(refImg,testImg)
+            simScore = float(simSIFT)/float(refMatches)
+            pathSet = image.split(os.sep)
+            idx = pathSet[-1].split(".")
+            metricDict[int(idx[0])] = simScore
+        # Sort the dict based on key which is the iteration ID
+        orderedMetrics = sorted(metricDict.items())
+        x,y = zip(*orderedMetrics)
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.plot(x,y)
+        plt.ylabel('Similarity Score (SIFT)')
+        plt.xlabel('Iteration')
+        figPath = os.path.join(resultPath,'res_{:04d}.png'.format(img))
+        plt.savefig(figPath)
 
 if __name__ == "__main__":
     returnScore()
