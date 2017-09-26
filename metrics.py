@@ -3,7 +3,6 @@ import os
 import glob
 import numpy as np
 import collections
-import matplotlib.pylab as plt
 import argparse
 import shutil
 
@@ -54,7 +53,7 @@ def computeMatchesSIFT(img1,img2):
 
 # Functions to compute metrics to be added here ...
 
-def returnScore():
+def returnScore(plot = False):
     parser = argparse.ArgumentParser()
     parser.add_argument("--images",type=str,default="completions",help="Folder name for images")
     parser.add_argument("--num_images",type=int,default=10,help="Number of images to be analyzed")
@@ -88,24 +87,29 @@ def returnScore():
             idx = pathSet[-1].split(".")
             # Creating a dictionary with key:value as  IterationID:SimilarityScore
             metricDict[int(idx[0])] = simScore
+            print('For Image {}, iteration {} : SIFT sim metric = {}'.format(img,idx[0],simScore))
 
             # Add code to compute alternative metrics here (PSNR, MSE etc ..)
             # Store these in a dictionary similar to as done above
             # Order it once metrics for all intermediate images are calculated (as shown below)
 
         # Sort the dict based on key which is the iteration ID
-        orderedMetrics = sorted(metricDict.items())
-        x,y = zip(*orderedMetrics)
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        # Plot the ordered dictionary
-        ax.plot(x,y)
-        plt.ylabel('Similarity Score (SIFT)')
-        plt.xlabel('Iteration')
+        if plot is True:
 
-        # Save the graph as an image
-        figPath = os.path.join(resultPath,'res_{:04d}.png'.format(img))
-        plt.savefig(figPath)
+            import matplotlib.pylab as plt
+
+            orderedMetrics = sorted(metricDict.items())
+            x,y = zip(*orderedMetrics)
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            # Plot the ordered dictionary
+            ax.plot(x,y)
+            plt.ylabel('Similarity Score (SIFT)')
+            plt.xlabel('Iteration')
+
+            # Save the graph as an image
+            figPath = os.path.join(resultPath,'res_{:04d}.png'.format(img))
+            plt.savefig(figPath)
 
 if __name__ == "__main__":
     returnScore()
