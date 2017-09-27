@@ -14,11 +14,17 @@ import tensorflow as tf
 from six.moves import xrange
 import shutil
 import sys
-
+# For handling CIFAR-10 data
+import cifar10_input
 from ops import *
 from utils import *
 
 SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg"]
+
+def get_cifar10_batch(batch_size):
+    # Fuck labels
+    images,_ = cifar10_input.inputs(eval_data=False,data_dir='/home/ibhat/cifar10_data/cifar-10-batches-bin',batch_size=batch_size)
+    return images
 
 def dataset_files(root):
     """Returns a list of all image files in the given directory"""
@@ -46,7 +52,7 @@ class DCGAN(object):
             c_dim: (optional) Dimension of image color. [3]
         """
         # Currently, image size must be a (power of 2) and (8 or higher).
-        assert(image_size & (image_size - 1) == 0 and image_size >= 8)
+        #assert(image_size & (image_size - 1) == 0 and image_size >= 8)
 
         self.sess = sess
         self.is_crop = is_crop
@@ -86,8 +92,8 @@ class DCGAN(object):
 
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')
-        self.images = tf.placeholder(
-            tf.float32, shape = [None] + self.image_shape, name='real_images')
+        #self.images = tf.placeholder(tf.float32, shape = [None] + self.image_shape, name='real_images')
+        self.images = get_cifar10_batch(self.batch_size)
         self.lowres_images = tf.reduce_mean(tf.reshape(self.images,
             [self.batch_size, self.lowres_size, self.lowres,
              self.lowres_size, self.lowres, self.c_dim]), [2, 4])
@@ -148,9 +154,9 @@ class DCGAN(object):
         self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
 
     def train(self, config):
-        data = dataset_files(config.dataset)
-        np.random.shuffle(data)
-        assert(len(data) > 0)
+        #data = dataset_files(config.dataset)
+        #np.random.shuffle(data)
+        #assert(len(data) > 0)
 
         d_optim = tf.train.AdamOptimizer(config.learning_rate, beta1=config.beta1) \
                           .minimize(self.d_loss, var_list=self.d_vars)
@@ -168,10 +174,6 @@ class DCGAN(object):
         self.writer = tf.summary.FileWriter("./logs", self.sess.graph)
 
         sample_z = np.random.uniform(-1, 1, size=(self.sample_size , self.z_dim))
-        sample_files = data[0:self.sample_size]
-
-        sample = [get_image(sample_file, self.image_size, is_crop=self.is_crop) for sample_file in sample_files]
-        sample_images = np.array(sample).astype(np.float32)
 
         counter = 1
         start_time = time.time()
@@ -199,22 +201,15 @@ Initializing a new one.
 
 """)
 
+        tf.train.start_queue_runners(sess=self.sess)
+
         for epoch in xrange(config.epoch):
-            data = dataset_files(config.dataset)
-            batch_idxs = min(len(data), config.train_size) // self.batch_size
-
+            batch_idxs = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN // self.batch_size
             for idx in xrange(0, batch_idxs):
-                batch_files = data[idx*config.batch_size:(idx+1)*config.batch_size]
-                batch = [get_image(batch_file, self.image_size, is_crop=self.is_crop)
-                         for batch_file in batch_files]
-                batch_images = np.array(batch).astype(np.float32)
-
-                batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]) \
-                            .astype(np.float32)
-
+                batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]).astype(np.float32)
                 # Update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],
-                    feed_dict={ self.images: batch_images, self.z: batch_z, self.is_training: True })
+                    feed_dict={self.z: batch_z, self.is_training: True })
                 self.writer.add_summary(summary_str, counter)
 
                 # Update G network
@@ -228,7 +223,7 @@ Initializing a new one.
                 self.writer.add_summary(summary_str, counter)
 
                 errD_fake = self.d_loss_fake.eval({self.z: batch_z, self.is_training: False})
-                errD_real = self.d_loss_real.eval({self.images: batch_images, self.is_training: False})
+                errD_real = self.d_loss_real.eval({self.is_training: False})
                 errG = self.g_loss.eval({self.z: batch_z, self.is_training: False})
 
                 counter += 1
@@ -238,7 +233,7 @@ Initializing a new one.
                 if np.mod(counter, 100) == 1:
                     samples, d_loss, g_loss = self.sess.run(
                         [self.G, self.d_loss, self.g_loss],
-                        feed_dict={self.z: sample_z, self.images: sample_images, self.is_training: False}
+                        feed_dict={self.z: sample_z,self.is_training: False}
                     )
                     save_images(samples, [8, 8],
                                 './samples/train_{:02d}_{:04d}.png'.format(epoch, idx))

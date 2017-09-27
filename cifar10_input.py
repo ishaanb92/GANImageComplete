@@ -27,7 +27,7 @@ import tensorflow as tf
 # Process images of this size. Note that this differs from the original CIFAR
 # image size of 32 x 32. If one alters this number, then the entire model
 # architecture will change and any model would need to be retrained.
-IMAGE_SIZE = 24
+IMAGE_SIZE = 32
 
 # Global constants describing the CIFAR-10 data set.
 NUM_CLASSES = 10
@@ -130,9 +130,6 @@ def _generate_image_and_label_batch(image, label, min_queue_examples,
         batch_size=batch_size,
         num_threads=num_preprocess_threads,
         capacity=min_queue_examples + 3 * batch_size)
-
-  # Display the training images in the visualizer.
-  tf.summary.image('images', images)
 
   print('Generated a single batch of images \n')
   return images, tf.reshape(label_batch, [batch_size])
