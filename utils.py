@@ -57,7 +57,7 @@ def transform(image, npx=64, is_crop=True):
     # npx : # of pixels width/height of image
     if is_crop:
         cropped_image = center_crop(image, npx)
-    else:
+    else: # Added by Ishaan
        # cropped_image = image
        # Resize the image
        cropped_image = scipy.misc.imresize(image,[npx,npx])

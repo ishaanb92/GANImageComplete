@@ -13,6 +13,7 @@ from glob import glob
 import tensorflow as tf
 from six.moves import xrange
 import shutil
+import sys
 
 from ops import *
 from utils import *
@@ -100,6 +101,9 @@ class DCGAN(object):
         self.D, self.D_logits = self.discriminator(self.images)
 
         self.D_, self.D_logits_ = self.discriminator(self.G, reuse=True)
+
+        # Creating compare op
+        self.compare_op = self.discriminator(self.images,reuse = True ,compare=True)
 
         self.d_sum = tf.summary.histogram("d", self.D)
         self.d__sum = tf.summary.histogram("d_", self.D_)
@@ -415,7 +419,7 @@ Initializing a new one.
                 else:
                     assert(False)
 
-    def discriminator(self, image, reuse=False):
+    def discriminator(self, image, reuse=False, compare = False):
         with tf.variable_scope("discriminator") as scope:
             if reuse:
                 scope.reuse_variables()
@@ -426,8 +430,10 @@ Initializing a new one.
             h2 = lrelu(self.d_bns[1](conv2d(h1, self.df_dim*4, name='d_h2_conv'), self.is_training))
             h3 = lrelu(self.d_bns[2](conv2d(h2, self.df_dim*8, name='d_h3_conv'), self.is_training))
             h4 = linear(tf.reshape(h3, [-1, 8192]), 1, 'd_h4_lin')
-
-            return tf.nn.sigmoid(h4), h4
+            if not compare:
+                return tf.nn.sigmoid(h4), h4
+            else:
+                return h3
 
     def generator(self, z):
         with tf.variable_scope("generator") as scope:
@@ -459,6 +465,57 @@ Initializing a new one.
                 [self.batch_size, size, size, 3], name=name, with_w=True)
 
             return tf.nn.tanh(hs[i])
+
+    def compare(self,config):
+        """
+        Compares images completed by the model to the ground truth images
+        using the learned representation from the discriminator
+
+        """
+
+        try:
+            tf.global_variables_initializer().run()
+        except:
+            tf.initialize_all_variables().run()
+
+        print('Checkpoint directory : {}'.format(self.checkpoint_dir))
+        # Load the checkpoint dir for the stored weights
+        isLoaded = self.load(self.checkpoint_dir)
+        assert(isLoaded)
+
+        if not isLoaded:
+            print('{} cannot be found, please enter correct directory or re-train'.format(self.checkpoint_dir))
+            sys.exit()
+
+        for step in range(0,config.numImages):
+            # Get the ground truth image
+            sampleTruthPath = os.path.join(os.getcwd(),config.imgs,'before_{:04d}.jpg'.format(step))
+            sampleTruth = get_image(sampleTruthPath,self.image_size,is_crop = self.is_crop)
+            # Get representation vector (8192 elements)
+            sampleTruth = np.asarray(sampleTruth)
+            sampleTruth = sampleTruth.reshape((self.batch_size,self.image_size,self.image_size,3))
+            fd = {
+                  self.images : sampleTruth,
+                  self.is_training : False
+                 }
+
+            truthRep = self.sess.run([self.compare_op],feed_dict = fd)
+            imagePath = os.path.join(os.getcwd(),config.imgs,'{:04d}'.format(step),'completed','*.jpg')
+            # List of image filenames from completion iterations for 1 truth image
+            images = glob(imagePath)
+            for image,it in zip(images,range(0,len(images))):
+                print('Analyzing iteration {0} for image truth image number {1}'.format(it,step))
+                img = get_image(image,self.image_size,is_crop=self.is_crop)
+                img = np.asarray(img)
+                img = img.reshape((self.batch_size,self.image_size,self.image_size,3))
+                fd = {
+                      self.images : img,
+                      self.is_training : False
+                     }
+                rep = self.sess.run([self.compare_op],feed_dict = fd)
+                dist = np.linalg.norm(np.asarray(rep)-np.asarray(truthRep)) # Equivalent calculating the desity function of a normal distribution (without the normalizing constant)
+                print('Metric for iteration {0} is {1}'.format(it,dist))
+
 
     def save(self, checkpoint_dir, step):
         if not os.path.exists(checkpoint_dir):

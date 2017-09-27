@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-#
-# Brandon Amos (http://bamos.github.io)
-# License: MIT
-# 2016-08-05
+#Author : Ishaan Bhat
+#Email  : i.r.bhat@student.tue.nl
 
 import argparse
 import os
@@ -32,7 +29,8 @@ parser.add_argument('--maskType', type=str,
                     choices=['random', 'center', 'left', 'full', 'grid', 'lowres'],
                     default='center')
 parser.add_argument('--centerScale', type=float, default=0.4)
-parser.add_argument('--imgs', type=str, default='test_set') # Directory with the test images
+parser.add_argument('--imgs', type=str, default='completions') # Directory with the test images
+parser.add_argument('--numImages', type=int, default=1) # Directory with the test images
 
 args = parser.parse_args()
 
@@ -45,4 +43,4 @@ with tf.Session(config=config) as sess:
     dcgan = DCGAN(sess, image_size=args.imgSize,
                   batch_size=1,
                   checkpoint_dir=args.checkpointDir, lam=args.lam)
-    dcgan.complete(args)
+    dcgan.compare(args)
