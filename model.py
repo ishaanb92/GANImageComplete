@@ -471,6 +471,8 @@ Initializing a new one.
         Compares images completed by the model to the ground truth images
         using the learned representation from the discriminator
 
+        Returns list where each element is a list holding iteration similarity scores
+
         """
 
         try:
@@ -487,6 +489,8 @@ Initializing a new one.
             print('{} cannot be found, please enter correct directory or re-train'.format(self.checkpoint_dir))
             sys.exit()
 
+
+        simScore = []
         for step in range(0,config.numImages):
             # Get the ground truth image
             sampleTruthPath = os.path.join(os.getcwd(),config.imgs,'before_{:04d}.jpg'.format(step))
@@ -503,6 +507,7 @@ Initializing a new one.
             imagePath = os.path.join(os.getcwd(),config.imgs,'{:04d}'.format(step),'completed','*.jpg')
             # List of image filenames from completion iterations for 1 truth image
             images = glob(imagePath)
+            iterationScore = []
             for image,it in zip(images,range(0,len(images))):
                 print('Analyzing iteration {0} for image truth image number {1}'.format(it,step))
                 img = get_image(image,self.image_size,is_crop=self.is_crop)
@@ -514,8 +519,10 @@ Initializing a new one.
                      }
                 rep = self.sess.run([self.compare_op],feed_dict = fd)
                 dist = np.linalg.norm(np.asarray(rep)-np.asarray(truthRep)) # Equivalent calculating the desity function of a normal distribution (without the normalizing constant)
+                iterationScore.append(dist)
                 print('Metric for iteration {0} is {1}'.format(it,dist))
-
+            simScore.append(iterationScore)
+        return simScore
 
     def save(self, checkpoint_dir, step):
         if not os.path.exists(checkpoint_dir):

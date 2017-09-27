@@ -6,6 +6,8 @@ import os
 import tensorflow as tf
 
 from model import DCGAN
+import pickle
+from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--approach', type=str,
@@ -43,4 +45,17 @@ with tf.Session(config=config) as sess:
     dcgan = DCGAN(sess, image_size=args.imgSize,
                   batch_size=1,
                   checkpoint_dir=args.checkpointDir, lam=args.lam)
-    dcgan.compare(args)
+    simScoreList = dcgan.compare(args)
+    # Save this list for later plotting
+    fname = 'simScore.pkl'
+
+    listFile = Path(fname)
+
+    # Delete if already exists
+    if listFile.is_file():
+        os.remove(fname)
+
+    with open(fname,'wb') as f:
+        pickle.dump(simScoreList,f)
+
+
