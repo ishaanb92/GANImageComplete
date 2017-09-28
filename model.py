@@ -4,6 +4,8 @@
 # [2016-08-05] Modifications for Completion: Brandon Amos (http://bamos.github.io)
 #   + License: MIT
 
+# Additional modifications for image resizing,batch completion,adding similarity metric : Ishaan Bhat (i.r.bhat@student.tue.nl)
+
 from __future__ import division
 import os
 import time
@@ -202,9 +204,10 @@ Initializing a new one.
 """)
 
         tf.train.start_queue_runners(sess=self.sess)
+        batch_idxs = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN // self.batch_size
 
         for epoch in xrange(config.epoch):
-            batch_idxs = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN // self.batch_size
+
             for idx in xrange(0, batch_idxs):
                 batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]).astype(np.float32)
                 # Update D network
@@ -236,7 +239,7 @@ Initializing a new one.
                         feed_dict={self.z: sample_z,self.is_training: False}
                     )
                     save_images(samples, [8, 8],
-                                './samples/train_{:02d}_{:04d}.png'.format(epoch, idx))
+                                './samples_cifar/train_{:02d}_{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
 
                 if np.mod(counter, 500) == 2:
@@ -420,6 +423,7 @@ Initializing a new one.
                 scope.reuse_variables()
 
             # TODO: Investigate how to parameterise discriminator based off image size.
+            # "conv2d","lrelu" function defined in ops.py, variable initializion performed there
             h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
             h1 = lrelu(self.d_bns[0](conv2d(h0, self.df_dim*2, name='d_h1_conv'), self.is_training))
             h2 = lrelu(self.d_bns[1](conv2d(h1, self.df_dim*4, name='d_h2_conv'), self.is_training))
