@@ -166,6 +166,13 @@ class DCGAN(object):
         except:
             tf.initialize_all_variables().run()
 
+        # Create a dir to store results
+        if not os.path.exists(os.path.join(os.getcwd(),'samples_cifar')):
+            os.makedirs(os.path.join(os.getcwd(),'samples_cifar'))
+        else:
+            shutil.rmtree(os.path.join(os.getcwd(),'samples_cifar'))
+            os.makedirs(os.path.join(os.getcwd(),'samples_cifar'))
+
         self.g_sum = tf.summary.merge(
             [self.z_sum, self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
         self.d_sum = tf.summary.merge(
