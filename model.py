@@ -17,16 +17,11 @@ from six.moves import xrange
 import shutil
 import sys
 # For handling CIFAR-10 data
-import cifar10_input
+import cifar10_preprocess
 from ops import *
 from utils import *
 
 SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg"]
-
-def get_cifar10_batch(batch_size):
-    # Fuck labels
-    images,_ = cifar10_input.inputs(eval_data=False,data_dir='/home/ibhat/cifar10_data/cifar-10-batches-bin',batch_size=batch_size)
-    return images
 
 def dataset_files(root):
     """Returns a list of all image files in the given directory"""
@@ -62,6 +57,8 @@ class DCGAN(object):
         self.image_size = image_size
         self.sample_size = sample_size
         self.image_shape = [image_size, image_size, c_dim]
+        # Get CIFAR-10 images
+        self.dataset = cifar10_preprocess.generate_dataset()
 
         self.lowres = lowres
         self.lowres_size = image_size // lowres
@@ -94,8 +91,8 @@ class DCGAN(object):
 
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')
-        #self.images = tf.placeholder(tf.float32, shape = [None] + self.image_shape, name='real_images')
-        self.images = get_cifar10_batch(self.batch_size)
+        self.images = tf.placeholder(tf.float32, shape = [None] + self.image_shape, name='real_images')
+        #self.images = get_cifar10_batch(self.batch_size)
         self.lowres_images = tf.reduce_mean(tf.reshape(self.images,
             [self.batch_size, self.lowres_size, self.lowres,
              self.lowres_size, self.lowres, self.c_dim]), [2, 4])
@@ -203,16 +200,16 @@ Initializing a new one.
 
 """)
 
-        tf.train.start_queue_runners(sess=self.sess)
-        batch_idxs = cifar10_input.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN // self.batch_size
+        batch_idxs = self.dataset.shape[0] // self.batch_size
 
         for epoch in xrange(config.epoch):
 
             for idx in xrange(0, batch_idxs):
+                batch_images = cifar10_preprocess.generate_batch(dataset=self.dataset,batch_size=self.batch_size)
                 batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]).astype(np.float32)
                 # Update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],
-                    feed_dict={self.z: batch_z, self.is_training: True })
+                        feed_dict={self.images: batch_images,self.z: batch_z, self.is_training: True })
                 self.writer.add_summary(summary_str, counter)
 
                 # Update G network
@@ -226,7 +223,7 @@ Initializing a new one.
                 self.writer.add_summary(summary_str, counter)
 
                 errD_fake = self.d_loss_fake.eval({self.z: batch_z, self.is_training: False})
-                errD_real = self.d_loss_real.eval({self.is_training: False})
+                errD_real = self.d_loss_real.eval({self.images:batch_images,self.is_training: False})
                 errG = self.g_loss.eval({self.z: batch_z, self.is_training: False})
 
                 counter += 1
@@ -236,7 +233,7 @@ Initializing a new one.
                 if np.mod(counter, 100) == 1:
                     samples, d_loss, g_loss = self.sess.run(
                         [self.G, self.d_loss, self.g_loss],
-                        feed_dict={self.z: sample_z,self.is_training: False}
+                        feed_dict={self.images:batch_images,self.z: sample_z,self.is_training: False}
                     )
                     save_images(samples, [8, 8],
                                 './samples_cifar/train_{:02d}_{:04d}.png'.format(epoch, idx))
