@@ -30,7 +30,7 @@ def dataset_files(root):
 
 
 class DCGAN(object):
-    def __init__(self, sess, image_size=64, is_crop=False,
+    def __init__(self, sess, image_size=32, is_crop=False,
                  batch_size=64, sample_size=64, lowres=8,
                  z_dim=100, gf_dim=64, df_dim=64,
                  gfc_dim=1024, dfc_dim=1024, c_dim=3,
@@ -92,7 +92,6 @@ class DCGAN(object):
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')
         self.images = tf.placeholder(tf.float32, shape = [None] + self.image_shape, name='real_images')
-        #self.images = get_cifar10_batch(self.batch_size)
         self.lowres_images = tf.reduce_mean(tf.reshape(self.images,
             [self.batch_size, self.lowres_size, self.lowres,
              self.lowres_size, self.lowres, self.c_dim]), [2, 4])
@@ -249,6 +248,31 @@ Initializing a new one.
                 if np.mod(counter, 500) == 2:
                     self.save(config.checkpoint_dir, counter)
 
+
+    def generate_samples(self,config):
+
+        try:
+            tf.global_variables_initializer().run()
+        except:
+            tf.initialize_all_variables().run()
+
+        isLoaded = self.load(self.checkpoint_dir)
+        assert(isLoaded)
+        # Create a dir to store results
+        if not os.path.exists(os.path.join(os.getcwd(),'samples_cifar_test')):
+            os.makedirs(os.path.join(os.getcwd(),'samples_cifar_test'))
+        else:
+            shutil.rmtree(os.path.join(os.getcwd(),'samples_cifar_test'))
+            os.makedirs(os.path.join(os.getcwd(),'samples_cifar_test'))
+
+        for idx in range(50):
+            sample_z = np.random.uniform(-1, 1, size=(self.batch_size,self.z_dim))
+            fd = {self.z : sample_z,
+                  self.is_training:False}
+            G_imgs = self.sess.run([self.G],feed_dict=fd)
+
+            save_images(G_imgs, [8, 8],
+                    './samples_cifar_test/gen_sample_{:04d}.jpg'.format(idx))
 
     def complete(self, config):
         def make_dir(outDir,name):
@@ -432,7 +456,8 @@ Initializing a new one.
             h1 = lrelu(self.d_bns[0](conv2d(h0, self.df_dim*2, name='d_h1_conv'), self.is_training))
             h2 = lrelu(self.d_bns[1](conv2d(h1, self.df_dim*4, name='d_h2_conv'), self.is_training))
             h3 = lrelu(self.d_bns[2](conv2d(h2, self.df_dim*8, name='d_h3_conv'), self.is_training))
-            h4 = linear(tf.reshape(h3, [-1, 8192]), 1, 'd_h4_lin')
+            numNeurons = (self.df_dim*8)*int(h3.get_shape()[1])*int(h3.get_shape()[2]) # Avoid hardcoding
+            h4 = linear(tf.reshape(h3, [-1, numNeurons]), 1, 'd_h4_lin')
             if not compare:
                 return tf.nn.sigmoid(h4), h4
             else:
@@ -462,11 +487,13 @@ Initializing a new one.
                 depth_mul //= 2
                 size *= 2
 
+            # Working code, but its a bit hacky IMO. Has to be a better way - Ishaan
             hs.append(None)
             name = 'g_h{}'.format(i)
             hs[i], _, _ = conv2d_transpose(hs[i - 1],
                 [self.batch_size, size, size, 3], name=name, with_w=True)
 
+            # re-scale between [-1,1]
             return tf.nn.tanh(hs[i])
 
     def compare(self,config):
