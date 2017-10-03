@@ -119,6 +119,7 @@ class DCGAN(object):
         self.d_loss_fake = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_logits_,
                                                     labels=tf.zeros_like(self.D_)))
+        # TODO : Implement generator loss using the "feature matching" idea from 'Improved Training Techniques for GAN'
         self.g_loss = tf.reduce_mean(
             tf.nn.sigmoid_cross_entropy_with_logits(logits=self.D_logits_,
                                                     labels=tf.ones_like(self.D_)))
@@ -211,6 +212,7 @@ Initializing a new one.
         for epoch in xrange(config.epoch):
 
             for idx in xrange(0, batch_idxs):
+                # Returns a normalzied batch
                 batch_images = cifar10_preprocess.generate_batch(dataset=self.dataset,batch_size=self.batch_size)
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
                 # Update D network

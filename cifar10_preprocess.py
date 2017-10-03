@@ -13,17 +13,19 @@ def generate_dataset():
     return dataset
 
 def generate_batch(dataset,batch_size,shuffle = True):
+    """
+    Returns a randonly chosen normalized batch
+
+    """
     if shuffle:
         np.random.shuffle(dataset)
     idx = np.random.randint(dataset.shape[0],size=batch_size)
     batch = dataset[idx,:,:,:]
-    #for image in batch:
-    #    for channel in image:
-    #        scaler = MinMaxScaler(feature_range = (-1,1), copy = False)
-    #        scaler.fit(channel)
-    #        scaler.transform(channel)
-    return batch
+    # Normalize
+    for image in batch:
+        image = (image/127.5) - 1
 
+    return batch
 
 if __name__ == '__main__':
     dataset = generate_dataset()
