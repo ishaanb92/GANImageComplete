@@ -212,7 +212,7 @@ Initializing a new one.
 
             for idx in xrange(0, batch_idxs):
                 batch_images = cifar10_preprocess.generate_batch(dataset=self.dataset,batch_size=self.batch_size)
-                batch_z = np.random.uniform(-1, 1, [config.batch_size, self.z_dim]).astype(np.float32)
+                batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
                 # Update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],
                         feed_dict={self.images: batch_images,self.z: batch_z, self.is_training: True })
@@ -249,7 +249,7 @@ Initializing a new one.
                     self.save(config.checkpoint_dir, counter)
 
 
-    def generate_samples(self,config):
+    def generate_samples(self,config,num_batches):
 
         try:
             tf.global_variables_initializer().run()
@@ -265,14 +265,14 @@ Initializing a new one.
             shutil.rmtree(os.path.join(os.getcwd(),'samples_cifar_test'))
             os.makedirs(os.path.join(os.getcwd(),'samples_cifar_test'))
 
-        for idx in range(50):
-            sample_z = np.random.uniform(-1, 1, size=(self.batch_size,self.z_dim))
-            fd = {self.z : sample_z,
-                  self.is_training:False}
+        for idx in range(num_batches):
+            sample_z = np.random.uniform(-1, 1, size=(self.batch_size,self.z_dim)).astype(np.float32)
+            fd = {
+                  self.z : sample_z,
+                  self.is_training:False
+                 }
             G_imgs = self.sess.run([self.G],feed_dict=fd)
-
-            save_images(G_imgs, [8, 8],
-                    './samples_cifar_test/gen_sample_{:04d}.jpg'.format(idx))
+            save_images(G_imgs[0],[8,8],'./samples_cifar_test/gen_sample_{:04d}.jpg'.format(idx))
 
     def complete(self, config):
         def make_dir(outDir,name):
@@ -459,7 +459,6 @@ Initializing a new one.
             # Avoid hard-coding you piece of shit.
             numNeurons = (self.df_dim*8)*int(h3.get_shape()[1])*int(h3.get_shape()[2])
             h4 = linear(tf.reshape(h3, [-1, numNeurons]), 1, 'd_h4_lin')
-            print('Shape of h4 : {}'.format(h4.get_shape()))
             #h4 = linear(tf.reshape(h3, [-1, 8192]), 1, 'd_h4_lin')
             if not compare:
                 return tf.nn.sigmoid(h4), h4
