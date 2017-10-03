@@ -271,8 +271,8 @@ Initializing a new one.
                   self.z : sample_z,
                   self.is_training:False
                  }
-            G_imgs = self.sess.run([self.G],feed_dict=fd)
-            save_images(G_imgs[0],[8,8],'./samples_cifar_test/gen_sample_{:04d}.jpg'.format(idx))
+            G_imgs = self.sess.run(self.G,feed_dict=fd)
+            save_images(G_imgs,[8,8],'./samples_cifar_test/gen_sample_{:04d}.jpg'.format(idx))
 
     def complete(self, config):
         def make_dir(outDir,name):
