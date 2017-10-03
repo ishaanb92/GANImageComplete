@@ -1,3 +1,7 @@
+# Author : Ishaan Bhat [i.r.bhat@student.tue.nl]
+
+#!/usr/bin/python3
+
 from batchup.datasets import cifar10
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
