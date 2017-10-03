@@ -271,8 +271,11 @@ Initializing a new one.
                   self.z : sample_z,
                   self.is_training:False
                  }
+            # Run generator for a single batch
             G_imgs = self.sess.run(self.G,feed_dict=fd)
-            save_images(G_imgs,[8,8],'./samples_cifar_test/gen_sample_{:04d}.jpg'.format(idx))
+            print('Saving samples for batch {}'.format(idx))
+            # Saves images generated in a single batch as an 8x8 grid of images
+            save_images(G_imgs,[8,8],'./samples_cifar_test/gen_sample_{:04d}.png'.format(idx))
 
     def complete(self, config):
         def make_dir(outDir,name):
