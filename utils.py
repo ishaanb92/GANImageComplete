@@ -65,7 +65,7 @@ def transform(image, npx=64, is_crop=True):
     return np.array(cropped_image)/127.5 - 1.
 
 def inverse_transform(images):
-    return (images+1.)/2.
+    return (images + 1.)/2.
 
 
 def to_json(output_path, *layers):

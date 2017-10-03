@@ -450,6 +450,9 @@ Initializing a new one.
                 else:
                     assert(False)
 
+    # Goodfellow et al.,'Improved Techniques for Training GANs' use 9 layer discriminator networks for CIFAR-10.
+    # We have 4 :|
+
     def discriminator(self, image, reuse=False, compare = False):
         with tf.variable_scope("discriminator") as scope:
             if reuse:
