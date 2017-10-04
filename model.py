@@ -63,7 +63,7 @@ class DCGAN(object):
         self.lowres = lowres
         self.lowres_size = image_size // lowres
         self.lowres_shape = [self.lowres_size, self.lowres_size, c_dim]
-
+        self.data_files = lsun_preprocess.create_file_list()
         self.z_dim = z_dim
 
         self.gf_dim = gf_dim
@@ -213,7 +213,7 @@ Initializing a new one.
 
             for idx in xrange(0, batch_idxs):
                 # Returns a normalzied batch
-                batch_images = lsun_preprocess.generate_batch(batch_size=self.batch_size)
+                batch_images = lsun_preprocess.generate_batch(files = self.data_files , batch_size=self.batch_size)
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
                 # Update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],

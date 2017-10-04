@@ -11,15 +11,20 @@ import random
 
 # TODO : Remove hard-coded path
 
-def generate_batch(batch_size):
+def create_file_list():
+
+    """
+    Creates list of file names of all images in the dataset
+
+    """
     dataset_path = '/home/ibhat/lsun/lsun/images'
-
     data_files = (os.listdir(dataset_path))
-
     files = [os.path.join(dataset_path,f) for f in data_files]
+    return files
+
+def generate_batch(files,batch_size):
 
     batch_files = random.sample(files,int(batch_size))
-
     norm_batch = []
     for bFile in batch_files:
         img = cv2.imread(bFile)
