@@ -16,12 +16,14 @@ import tensorflow as tf
 from six.moves import xrange
 import shutil
 import sys
-# For handling CIFAR-10 data
-import cifar10_preprocess
+import lsun_preprocess
 from ops import *
 from utils import *
 
 SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg"]
+
+LSUN_BEDROOM_IMAGES = 3033042
+
 
 def dataset_files(root):
     """Returns a list of all image files in the given directory"""
@@ -58,8 +60,6 @@ class DCGAN(object):
         self.sample_size = sample_size
         self.image_shape = [image_size, image_size, c_dim]
         # Get CIFAR-10 images
-        self.dataset = cifar10_preprocess.generate_dataset()
-
         self.lowres = lowres
         self.lowres_size = image_size // lowres
         self.lowres_shape = [self.lowres_size, self.lowres_size, c_dim]
@@ -167,11 +167,11 @@ class DCGAN(object):
             tf.initialize_all_variables().run()
 
         # Create a dir to store results
-        if not os.path.exists(os.path.join(os.getcwd(),'samples_cifar')):
-            os.makedirs(os.path.join(os.getcwd(),'samples_cifar'))
+        if not os.path.exists(os.path.join(os.getcwd(),'samples_lsun')):
+            os.makedirs(os.path.join(os.getcwd(),'samples_lsun'))
         else:
-            shutil.rmtree(os.path.join(os.getcwd(),'samples_cifar'))
-            os.makedirs(os.path.join(os.getcwd(),'samples_cifar'))
+            shutil.rmtree(os.path.join(os.getcwd(),'samples_lsun'))
+            os.makedirs(os.path.join(os.getcwd(),'samples_lsun'))
 
         self.g_sum = tf.summary.merge(
             [self.z_sum, self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
@@ -207,13 +207,13 @@ Initializing a new one.
 
 """)
 
-        batch_idxs = self.dataset.shape[0] // self.batch_size
+        batch_idxs = LSUN_BEDROOM_IMAGES // self.batch_size
 
         for epoch in xrange(config.epoch):
 
             for idx in xrange(0, batch_idxs):
                 # Returns a normalzied batch
-                batch_images = cifar10_preprocess.generate_batch(dataset=self.dataset,batch_size=self.batch_size)
+                batch_images = lsun_preprocess.generate_batch(batch_size=self.batch_size)
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
                 # Update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],
@@ -244,7 +244,7 @@ Initializing a new one.
                         feed_dict={self.images:batch_images,self.z: sample_z,self.is_training: False}
                     )
                     save_images(samples, [8, 8],
-                                './samples_cifar/train_{:02d}_{:04d}.png'.format(epoch, idx))
+                                './samples_lsun/train_{:02d}_{:04d}.png'.format(epoch, idx))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
 
                 if np.mod(counter, 500) == 2:
