@@ -91,10 +91,10 @@ class DCGAN(object):
 
     def build_model(self):
         self.is_training = tf.placeholder(tf.bool, name='is_training')
-        self.images = tf.placeholder(tf.float32, shape = [None] + self.image_shape, name='real_images')
-        self.lowres_images = tf.reduce_mean(tf.reshape(self.images,
-            [self.batch_size, self.lowres_size, self.lowres,
-             self.lowres_size, self.lowres, self.c_dim]), [2, 4])
+        #self.images = tf.placeholder(tf.float32, shape = [None] + self.image_shape, name='real_images')
+        #self.lowres_images = tf.reduce_mean(tf.reshape(self.images,
+        #    [self.batch_size, self.lowres_size, self.lowres,
+        #     self.lowres_size, self.lowres, self.c_dim]), [2, 4])
         self.z = tf.placeholder(tf.float32, [None, self.z_dim], name='z')
         self.z_sum = tf.summary.histogram("z", self.z)
 
@@ -102,12 +102,12 @@ class DCGAN(object):
         self.lowres_G = tf.reduce_mean(tf.reshape(self.G,
             [self.batch_size, self.lowres_size, self.lowres,
              self.lowres_size, self.lowres, self.c_dim]), [2, 4])
-        self.D, self.D_logits = self.discriminator(self.images)
+        self.D, self.D_logits = self.discriminator()
 
-        self.D_, self.D_logits_ = self.discriminator(self.G, reuse=True)
+        self.D_, self.D_logits_ = self.discriminator(reuse=True,real_images=False)
 
         # Creating compare op
-        self.compare_op = self.discriminator(self.images,reuse = True ,compare=True)
+        self.compare_op = self.discriminator(reuse = True ,compare=True)
 
         self.d_sum = tf.summary.histogram("d", self.D)
         self.d__sum = tf.summary.histogram("d_", self.D_)
@@ -140,17 +140,17 @@ class DCGAN(object):
         self.saver = tf.train.Saver(max_to_keep=1)
 
         # Completion.
-        self.mask = tf.placeholder(tf.float32, self.image_shape, name='mask')
-        self.lowres_mask = tf.placeholder(tf.float32, self.lowres_shape, name='lowres_mask')
-        self.contextual_loss = tf.reduce_sum(
-            tf.contrib.layers.flatten(
-                tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.images))), 1)
-        self.contextual_loss += tf.reduce_sum(
-            tf.contrib.layers.flatten(
-                tf.abs(tf.multiply(self.lowres_mask, self.lowres_G) - tf.multiply(self.lowres_mask, self.lowres_images))), 1)
-        self.perceptual_loss = self.g_loss
-        self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
-        self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
+        #self.mask = tf.placeholder(tf.float32, self.image_shape, name='mask')
+        #self.lowres_mask = tf.placeholder(tf.float32, self.lowres_shape, name='lowres_mask')
+        #self.contextual_loss = tf.reduce_sum(
+        #    tf.contrib.layers.flatten(
+        #        tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.images))), 1)
+        #self.contextual_loss += tf.reduce_sum(
+        #    tf.contrib.layers.flatten(
+        #        tf.abs(tf.multiply(self.lowres_mask, self.lowres_G) - tf.multiply(self.lowres_mask, self.lowres_images))), 1)
+        #self.perceptual_loss = self.g_loss
+        #self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
+        #self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
 
     def train(self, config):
         #data = dataset_files(config.dataset)
@@ -209,15 +209,17 @@ Initializing a new one.
 
         batch_idxs = LSUN_BEDROOM_IMAGES // self.batch_size
 
+        # Start threads for fetching batches
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord,sess=self.sess)
+
         for epoch in xrange(config.epoch):
 
             for idx in xrange(0, batch_idxs):
-                # Returns a normalzied batch
-                batch_images = lsun_preprocess.generate_batch(files = self.data_files , batch_size=self.batch_size)
                 batch_z = np.random.uniform(-1, 1, [self.batch_size, self.z_dim]).astype(np.float32)
                 # Update D network
                 _, summary_str = self.sess.run([d_optim, self.d_sum],
-                        feed_dict={self.images: batch_images,self.z: batch_z, self.is_training: True })
+                        feed_dict={self.z: batch_z, self.is_training: True })
                 self.writer.add_summary(summary_str, counter)
 
                 # Update G network
@@ -230,15 +232,18 @@ Initializing a new one.
                     feed_dict={ self.z: batch_z, self.is_training: True })
                 self.writer.add_summary(summary_str, counter)
 
+                # Discriminator takes images from generator
                 errD_fake = self.d_loss_fake.eval({self.z: batch_z, self.is_training: False})
-                errD_real = self.d_loss_real.eval({self.images:batch_images,self.is_training: False})
+                #Discriminator generates a batch internally
+                errD_real = self.d_loss_real.eval({self.z:batch_z,self.is_training: False})
+
                 errG = self.g_loss.eval({self.z: batch_z, self.is_training: False})
 
                 counter += 1
                 print("Epoch: [{:2d}] [{:4d}/{:4d}] time: {:4.4f}, d_loss: {:.8f}, g_loss: {:.8f}".format(
                     epoch, idx, batch_idxs, time.time() - start_time, errD_fake+errD_real, errG))
 
-                if np.mod(counter, 100) == 1:
+                if np.mod(counter, 5000) == 1:
                     samples, d_loss, g_loss = self.sess.run(
                         [self.G, self.d_loss, self.g_loss],
                         feed_dict={self.images:batch_images,self.z: sample_z,self.is_training: False}
@@ -453,10 +458,17 @@ Initializing a new one.
     # Goodfellow et al.,'Improved Techniques for Training GANs' use 9 layer discriminator networks for CIFAR-10.
     # We have 4 :|
 
-    def discriminator(self, image, reuse=False, compare = False):
+    def discriminator(self,reuse=False, compare = False, real_images = True):
+
         with tf.variable_scope("discriminator") as scope:
             if reuse:
                 scope.reuse_variables()
+            if real_images:
+                # Generate a batch of real images
+                image = lsun_preprocess.generate_batch(files = self.data_files,batch_size = self.batch_size)
+            else:
+                # Get a batch of generated images
+                image = self.G
 
             # TODO: Investigate how to parameterise discriminator based off image size.
             # "conv2d","lrelu" function defined in ops.py, variable initializion performed there
