@@ -54,7 +54,7 @@ def generate_batch(files,batch_size):
                  tf.div(images,
                         127.5),
                  1.)
-    return images
+    return normImages
 
 
 if __name__ == '__main__':
