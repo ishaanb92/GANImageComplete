@@ -256,7 +256,7 @@ Initializing a new one.
                     self.save(config.checkpoint_dir, counter)
 
 
-    def generate_samples(self,config,num_batches):
+    def generate_samples(self,config,num_batches,samples_dir):
 
         try:
             tf.global_variables_initializer().run()
@@ -266,11 +266,11 @@ Initializing a new one.
         isLoaded = self.load(self.checkpoint_dir)
         assert(isLoaded)
         # Create a dir to store results
-        if not os.path.exists(os.path.join(os.getcwd(),'samples_cifar_test')):
-            os.makedirs(os.path.join(os.getcwd(),'samples_cifar_test'))
+        if not os.path.exists(os.path.join(os.getcwd(),samples_dir)):
+            os.makedirs(os.path.join(os.getcwd(),samples_dir))
         else:
-            shutil.rmtree(os.path.join(os.getcwd(),'samples_cifar_test'))
-            os.makedirs(os.path.join(os.getcwd(),'samples_cifar_test'))
+            shutil.rmtree(os.path.join(os.getcwd(),samples_dir))
+            os.makedirs(os.path.join(os.getcwd(),samples_dir))
 
         for idx in range(num_batches):
             sample_z = np.random.uniform(-1, 1, size=(self.batch_size,self.z_dim)).astype(np.float32)
@@ -282,7 +282,7 @@ Initializing a new one.
             G_imgs = self.sess.run(self.G,feed_dict=fd)
             print('Saving samples for batch {}'.format(idx))
             # Saves images generated in a single batch as an 8x8 grid of images
-            save_images(G_imgs,[8,8],'./samples_cifar_test/gen_sample_{:04d}.png'.format(idx))
+            save_images(G_imgs,[8,8],os.path.join(samples_dir,'gen_sample_{:04d}.png'.format(idx)))
 
     def complete(self, config):
         def make_dir(outDir,name):
