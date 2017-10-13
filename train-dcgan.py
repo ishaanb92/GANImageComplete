@@ -15,6 +15,9 @@ from utils import pp, visualize, to_json
 
 import tensorflow as tf
 
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
 flags = tf.app.flags
 flags.DEFINE_integer("epoch", 25, "Epoch to train [25]")
 flags.DEFINE_float("learning_rate", 0.0002, "Learning rate of for adam [0.0002]")
@@ -32,10 +35,10 @@ if not os.path.exists(FLAGS.checkpoint_dir):
 if not os.path.exists(FLAGS.sample_dir):
     os.makedirs(FLAGS.sample_dir)
 
-config = tf.ConfigProto()
+config = tf.ConfigProto(log_device_placement=True)
+
 config.gpu_options.allow_growth = True
 with tf.Session(config=config) as sess:
     dcgan = DCGAN(sess, image_size=FLAGS.image_size, batch_size=FLAGS.batch_size,
                   is_crop=False, checkpoint_dir=FLAGS.checkpoint_dir)
-
     dcgan.train(FLAGS)
