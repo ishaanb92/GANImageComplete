@@ -167,11 +167,11 @@ class DCGAN(object):
             tf.initialize_all_variables().run()
 
         # Create a dir to store results
-        if not os.path.exists(os.path.join(os.getcwd(),'samples_lsun')):
-            os.makedirs(os.path.join(os.getcwd(),'samples_lsun'))
+        if not os.path.exists(os.path.join(os.getcwd(),config.sample_dir)):
+            os.makedirs(os.path.join(os.getcwd(),config.sample_dir))
         else:
-            shutil.rmtree(os.path.join(os.getcwd(),'samples_lsun'))
-            os.makedirs(os.path.join(os.getcwd(),'samples_lsun'))
+            shutil.rmtree(os.path.join(os.getcwd(),config.sample_dir))
+            os.makedirs(os.path.join(os.getcwd(),config.sample_dir))
 
         self.g_sum = tf.summary.merge(
             [self.z_sum, self.d__sum, self.G_sum, self.d_loss_fake_sum, self.g_loss_sum])
@@ -249,7 +249,7 @@ Initializing a new one.
                         feed_dict={self.z: sample_z,self.is_training: False}
                     )
                     save_images(samples, [8, 8],
-                                './samples_lsun/train_{:02d}_{:04d}.png'.format(epoch, idx))
+                                os.path.join(config.sample_dir,'train_{:02d}_{:04d}.png'.format(epoch, idx)))
                     print("[Sample] d_loss: {:.8f}, g_loss: {:.8f}".format(d_loss, g_loss))
 
                 if np.mod(counter, 500) == 2:
@@ -465,7 +465,7 @@ Initializing a new one.
                 scope.reuse_variables()
             if real_images:
                 # Generate a batch of real images
-                image = lsun_preprocess.generate_batch(files = self.data_files,batch_size = self.batch_size)
+                image = lsun_preprocess.generate_batch(files = self.data_files,batch_size = self.batch_size,image_size = self.image_size)
             else:
                 # Get a batch of generated images
                 image = self.G

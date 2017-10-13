@@ -24,7 +24,7 @@ def create_file_list():
     return files
 
 
-def convert_file_format(files):
+def convert_file_format(files,size):
     """
     Takes filename queue and returns an example from it
     using the TF Reader structure
@@ -34,13 +34,13 @@ def convert_file_format(files):
     image_reader = tf.WholeFileReader()
     _,image_file = image_reader.read(filename_queue)
     image = tf.image.decode_jpeg(image_file)
-    image = tf.image.resize_images(image, [64,64])
-    image.set_shape((64,64,3))
+    image = tf.image.resize_images(image, [size,size])
+    image.set_shape((size,size,3))
     return image
 
-def generate_batch(files,batch_size):
+def generate_batch(files,batch_size,image_size):
 
-    image = convert_file_format(files)
+    image = convert_file_format(files,image_size)
     # Generate batch
     num_preprocess_threads = 1
     min_queue_examples = 256

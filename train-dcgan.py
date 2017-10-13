@@ -26,8 +26,8 @@ flags.DEFINE_integer("train_size", np.inf, "The size of train images [np.inf]")
 flags.DEFINE_integer("batch_size", 64, "The size of batch images [64]")
 flags.DEFINE_integer("image_size", 64 , "The size of image to use")
 flags.DEFINE_string("dataset", "lfw-aligned-64", "Dataset directory.")
-flags.DEFINE_string("checkpoint_dir", "checkpoint", "Directory name to save the checkpoints [checkpoint]")
-flags.DEFINE_string("sample_dir", "samples", "Directory name to save the image samples [samples]")
+flags.DEFINE_string("checkpoint_dir", "checkpoint_lsun_64", "Directory name to save the checkpoints [checkpoint]")
+flags.DEFINE_string("sample_dir", "samples_lsun_64", "Directory name to save the image samples [samples]")
 FLAGS = flags.FLAGS
 
 if not os.path.exists(FLAGS.checkpoint_dir):
