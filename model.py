@@ -428,12 +428,12 @@ Initializing a new one.
             if reuse:
                 scope.reuse_variables()
 
-            # TODO: Investigate how to parameterise discriminator based off image size.
             h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
             h1 = lrelu(self.d_bns[0](conv2d(h0, self.df_dim*2, name='d_h1_conv'), self.is_training))
             h2 = lrelu(self.d_bns[1](conv2d(h1, self.df_dim*4, name='d_h2_conv'), self.is_training))
             h3 = lrelu(self.d_bns[2](conv2d(h2, self.df_dim*8, name='d_h3_conv'), self.is_training))
-            h4 = linear(tf.reshape(h3, [-1, 8192]), 1, 'd_h4_lin')
+            numNeurons = (self.df_dim*8)*int(h3.get_shape()[1])*int(h3.get_shape()[2])
+            h4 = linear(tf.reshape(h3, [-1, numNeurons]), 1, 'd_h4_lin')
             if not compare:
                 return tf.nn.sigmoid(h4), h4
             else:
