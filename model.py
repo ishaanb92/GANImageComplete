@@ -248,7 +248,9 @@ Initializing a new one.
                     self.save(config.checkpoint_dir, counter)
 
 
-    def complete(self, config):
+    def complete(self, config,reconstruct = True):
+
+
         def make_dir(outDir,name):
             # Works on python 2.7, where exist_ok arg to makedirs isn't available.
             p = os.path.join(outDir, name)
@@ -276,31 +278,34 @@ Initializing a new one.
 
         batch_idxs = int(np.ceil(nImgs/self.batch_size))
         lowres_mask = np.zeros(self.lowres_shape)
-        if config.maskType == 'random':
-            fraction_masked = 0.2
+        if reconstruct:
             mask = np.ones(self.image_shape)
-            mask[np.random.random(self.image_shape[:2]) < fraction_masked] = 0.0
-        elif config.maskType == 'center':
-            assert(config.centerScale <= 0.5)
-            mask = np.ones(self.image_shape)
-            sz = self.image_size
-            l = int(self.image_size*config.centerScale)
-            u = int(self.image_size*(1.0-config.centerScale))
-            mask[l:u, l:u, :] = 0.0
-        elif config.maskType == 'left':
-            mask = np.ones(self.image_shape)
-            c = self.image_size // 2
-            mask[:,:c,:] = 0.0
-        elif config.maskType == 'full':
-            mask = np.ones(self.image_shape)
-        elif config.maskType == 'grid':
-            mask = np.zeros(self.image_shape)
-            mask[::4,::4,:] = 1.0
-        elif config.maskType == 'lowres':
-            lowres_mask = np.ones(self.lowres_shape)
-            mask = np.zeros(self.image_shape)
         else:
-            assert(False)
+            if config.maskType == 'random':
+                fraction_masked = 0.2
+                mask = np.ones(self.image_shape)
+                mask[np.random.random(self.image_shape[:2]) < fraction_masked] = 0.0
+            elif config.maskType == 'center':
+                assert(config.centerScale <= 0.5)
+                mask = np.ones(self.image_shape)
+                sz = self.image_size
+                l = int(self.image_size*config.centerScale)
+                u = int(self.image_size*(1.0-config.centerScale))
+                mask[l:u, l:u, :] = 0.0
+            elif config.maskType == 'left':
+                mask = np.ones(self.image_shape)
+                c = self.image_size // 2
+                mask[:,:c,:] = 0.0
+            elif config.maskType == 'full':
+                mask = np.ones(self.image_shape)
+            elif config.maskType == 'grid':
+                mask = np.zeros(self.image_shape)
+                mask[::4,::4,:] = 1.0
+            elif config.maskType == 'lowres':
+                lowres_mask = np.ones(self.lowres_shape)
+                mask = np.zeros(self.image_shape)
+            else:
+                assert(False)
 
         for idx in xrange(0, batch_idxs):
             l = idx*self.batch_size
@@ -350,15 +355,14 @@ Initializing a new one.
                 fd = {
                     self.z: zhats,
                     self.mask: mask,
-                    self.lowres_mask: lowres_mask,
                     self.images: batch_images,
+                    self.lowres_mask:lowres_mask,
                     self.is_training: False
                 }
-                run = [self.complete_loss, self.grad_complete_loss, self.G, self.lowres_G]
-                loss, g, G_imgs, lowres_G_imgs = self.sess.run(run, feed_dict=fd)
+                run = [self.complete_loss, self.grad_complete_loss, self.G]
+                loss, g, G_imgs= self.sess.run(run, feed_dict=fd)
 
                 for img in range(batchSz):
-                    #print('Batch size is {}'.format(batchSz))
                     with open(os.path.join(outDir, 'logs/hats_{:02d}.log'.format(img)), 'ab') as f:
                         f.write('{} {} '.format(i, loss[img]).encode())
                         np.savetxt(f, zhats[img:img+1])

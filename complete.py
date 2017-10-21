@@ -10,6 +10,8 @@ import tensorflow as tf
 
 from model import DCGAN
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--approach', type=str,
                     choices=['adam', 'hmc'],
