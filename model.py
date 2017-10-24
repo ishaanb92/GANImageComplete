@@ -14,7 +14,7 @@ import tensorflow as tf
 from six.moves import xrange
 import shutil
 import sys
-
+import batch_preprocess
 from ops import *
 from utils import *
 
@@ -31,7 +31,7 @@ class DCGAN(object):
                  batch_size=64, sample_size=64, lowres=8,
                  z_dim=100, gf_dim=64, df_dim=64,
                  gfc_dim=1024, dfc_dim=1024, c_dim=3,
-                 checkpoint_dir=None, lam=0.1):
+                 checkpoint_dir=None, lam=0.1,images_dir= None):
         """
 
         Args:
@@ -70,6 +70,8 @@ class DCGAN(object):
         self.lam = lam
 
         self.c_dim = c_dim
+
+        self.images_dir = images_dir
 
         # batch normalization : deals with poor initialization helps gradient flow
         self.d_bns = [
@@ -133,6 +135,15 @@ class DCGAN(object):
         self.g_vars = [var for var in t_vars if 'g_' in var.name]
 
         self.saver = tf.train.Saver(max_to_keep=1)
+
+        # Reconstruction
+        self.recon_pixel_loss = tf.reduce_sum(
+                                    tf.contrib.layers.flatten(
+                                        tf.abs(self.G - self.images))
+                                    , 1)
+
+        self.recon_total_loss = self.recon_pixel_loss + self.lam*self.g_loss
+        self.recon_loss_grad = tf.gradients(self.recon_total_loss,self.z)
 
         # Completion.
         self.mask = tf.placeholder(tf.float32, self.image_shape, name='mask')
@@ -257,11 +268,10 @@ Initializing a new one.
             if not os.path.exists(p):
                 os.makedirs(p)
 
-        if not os.path.exists(config.outDir):
-            os.makedirs(config.outDir)
-        else:
+        if os.path.exists(config.outDir):
             shutil.rmtree(config.outDir)
-            os.makedirs(config.outDir)
+
+        os.makedirs(config.outDir)
 
         try:
             tf.global_variables_initializer().run()
@@ -343,8 +353,9 @@ Initializing a new one.
             # Create folders to save stuff
             for img in range(batchSz):
                 outDir = os.path.join(config.outDir,'{:04d}'.format(idx))
-                make_dir(outDir,'hats_imgs')
-                make_dir(outDir,'completed')
+                make_dir(outDir,'gen_images')
+                if not reconstruct:
+                    make_dir(outDir,'completed')
                 make_dir(outDir,'logs')
                 with open(os.path.join(outDir,'logs/hats_{:02d}.log'.format(img)), 'a') as f:
                     f.write('iter loss ' +
@@ -370,21 +381,24 @@ Initializing a new one.
                 if i % config.outInterval == 0:
                     print(i, np.mean(loss[0:batchSz]))
                     imgName = os.path.join(outDir,
-                                           'hats_imgs/{:04d}.jpg'.format(i))
+                                           'gen_images/{:04d}.jpg'.format(i))
                     nRows = np.ceil(batchSz/8)
                     nCols = min(8, batchSz)
                     save_images(G_imgs[:batchSz,:,:,:], [nRows,nCols], imgName)
+
                     if lowres_mask.any():
                         imgName = imgName[:-4] + '.lowres.jpg'
                         save_images(np.repeat(np.repeat(lowres_G_imgs[:batchSz,:,:,:],
                                               self.lowres, 1), self.lowres, 2),
                                     [nRows,nCols], imgName)
 
-                    inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
-                    completed = masked_images + inv_masked_hat_images
-                    imgName = os.path.join(outDir,
-                                           'completed/{:04d}.jpg'.format(i))
-                    save_images(completed[:batchSz,:,:,:], [nRows,nCols], imgName)
+                    # For reconstruction we do not need any "overlaying"
+                    if not reconstruct:
+                        inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
+                        completed = masked_images + inv_masked_hat_images
+                        imgName = os.path.join(outDir,
+                                               'completed/{:04d}.jpg'.format(i))
+                        save_images(completed[:batchSz,:,:,:], [nRows,nCols], imgName)
 
                 if config.approach == 'adam':
                     # Optimize single completion with Adam
@@ -423,6 +437,66 @@ Initializing a new one.
                 else:
                     assert(False)
 
+    def reconstruct(self,config):
+
+        try:
+            tf.global_variables_initializer().run()
+        except:
+            tf.initialize_all_variables().run()
+
+        true_image_files = batch_preprocess.create_file_list(image_dir = self.images_dir,num_samples = config.num_images,sample=True)
+
+        batch_idxs = int(config.num_images/self.batch_size)
+
+        # Create dir structure
+        if os.path.exists(config.outDir):
+            shutil.rmtree(config.outDir)
+
+        os.makedirs(config.outDir)
+
+        # Start threads for fetching batches
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(coord=coord,sess=self.sess)
+
+        for batch in range(0,batch_idxs):
+            # Generate a batch
+            batch = batch_preprocess.generate_batch(files = true_image_files, batch_size = self.batch_size, image_size = self.image_size)
+            # Store the image in sub-dir as a true image
+            batch_dir = os.path.join(config.outDir,'{:04d}'.format(batch_idxs))
+            os.makedirs(batch_dir)
+            #save_images(batch,[1,1],os.path.join(batch_dir,'true_image.jpg'))
+            # Sample a random z
+            zhats = np.random.uniform(-1, 1, size=(self.batch_size, self.z_dim))
+            m = 0
+            v = 0
+
+            true_image = batch.eval(session = self.sess)
+
+            for step in range(0,config.nIter):
+                fd = {
+                        self.images : true_image,
+                        self.z : zhats,
+                        self.is_training: False,
+                     }
+                # Generate image from z
+                G_img,complete_loss,z_grads = self.sess.run([self.G,self.recon_total_loss,self.recon_loss_grad],feed_dict = fd)
+
+                # Can't use tf.train.AdamOptimizer to update z's because z's are placeholders and not "variables"
+                m_prev = np.copy(m)
+                v_prev = np.copy(v)
+                m = config.beta1 * m_prev + (1 - config.beta1) * z_grads[0]
+                v = config.beta2 * v_prev + (1 - config.beta2) * np.multiply(z_grads[0], z_grads[0])
+                m_hat = m / (1 - config.beta1 ** (step + 1))
+                v_hat = v / (1 - config.beta2 ** (step + 1))
+                zhats += - np.true_divide(config.lr * m_hat, (np.sqrt(v_hat) + config.eps))
+                zhats = np.clip(zhats, -1, 1)
+                if step%100:
+                    print('Iteration {} :: Reconstruction loss for image {} = {}'.format(step,batch_idxs,complete_loss))
+
+            # Save the reconstructed image
+            save_images(G_img,[1,1],os.path.join(batch_dir,'recon.jpg'))
+
+
     def discriminator(self, image, reuse=False, compare = False):
         with tf.variable_scope("discriminator") as scope:
             if reuse:
@@ -438,6 +512,7 @@ Initializing a new one.
                 return tf.nn.sigmoid(h4), h4
             else:
                 return h3
+
 
     def generator(self, z):
         with tf.variable_scope("generator") as scope:
@@ -469,6 +544,7 @@ Initializing a new one.
                 [self.batch_size, size, size, 3], name=name, with_w=True)
 
             return tf.nn.tanh(hs[i])
+
 
     def compare(self,config):
         """
