@@ -318,6 +318,11 @@ Initializing a new one.
                 assert(False)
 
         for idx in xrange(0, batch_idxs):
+
+            outDir = os.path.join(config.outDir,'{:04d}'.format(idx))
+            os.makedirs(outDir)
+            logPath = os.path.join(outDir,'logs')
+            os.makedirs(logPath)
             l = idx*self.batch_size
             u = min((idx+1)*self.batch_size, nImgs)
             batchSz = u-l
@@ -337,11 +342,12 @@ Initializing a new one.
 
             nRows = np.ceil(batchSz/8)
             nCols = min(8, batchSz)
-            save_images(batch_images[:batchSz,:,:,:], [nRows,nCols],
-                    os.path.join(config.outDir, 'before_{:04d}.jpg'.format(idx)))
-            masked_images = np.multiply(batch_images, mask)
-            save_images(masked_images[:batchSz,:,:,:], [nRows,nCols],
-                    os.path.join(config.outDir, 'masked_{:04d}.jpg'.format(idx)))
+            imgName = os.path.join(outDir,'original.jpg')
+            save_images(batch_images[:batchSz,:,:,:], [nRows,nCols],imgName)
+            if not reconstruct:
+                masked_images = np.multiply(batch_images, mask)
+                save_images(masked_images[:batchSz,:,:,:], [nRows,nCols],
+                    os.path.join(outDir,'masked.jpg'.format(idx)))
             if lowres_mask.any():
                 lowres_images = np.reshape(batch_images, [self.batch_size, self.lowres_size, self.lowres,
                     self.lowres_size, self.lowres, self.c_dim]).mean(4).mean(2)
@@ -352,12 +358,8 @@ Initializing a new one.
 
             # Create folders to save stuff
             for img in range(batchSz):
-                outDir = os.path.join(config.outDir,'{:04d}'.format(idx))
-                make_dir(outDir,'gen_images')
-                if not reconstruct:
-                    make_dir(outDir,'completed')
-                make_dir(outDir,'logs')
-                with open(os.path.join(outDir,'logs/hats_{:02d}.log'.format(img)), 'a') as f:
+
+                with open(os.path.join(logPath,'hats_{:02d}.log'.format(img)), 'a') as f:
                     f.write('iter loss ' +
                             ' '.join(['z{}'.format(zi) for zi in range(self.z_dim)]) +
                             '\n')
@@ -374,14 +376,14 @@ Initializing a new one.
                 loss, g, G_imgs= self.sess.run(run, feed_dict=fd)
 
                 for img in range(batchSz):
-                    with open(os.path.join(outDir, 'logs/hats_{:02d}.log'.format(img)), 'ab') as f:
+                    with open(os.path.join(logPath, 'hats_{:02d}.log'.format(img)), 'ab') as f:
                         f.write('{} {} '.format(i, loss[img]).encode())
                         np.savetxt(f, zhats[img:img+1])
 
                 if i % config.outInterval == 0:
                     print(i, np.mean(loss[0:batchSz]))
                     imgName = os.path.join(outDir,
-                                           'gen_images/{:04d}.jpg'.format(i))
+                                           'gen_{:04d}.jpg'.format(i))
                     nRows = np.ceil(batchSz/8)
                     nCols = min(8, batchSz)
                     save_images(G_imgs[:batchSz,:,:,:], [nRows,nCols], imgName)
@@ -397,7 +399,7 @@ Initializing a new one.
                         inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                         completed = masked_images + inv_masked_hat_images
                         imgName = os.path.join(outDir,
-                                               'completed/{:04d}.jpg'.format(i))
+                                               'completed_{:04d}.jpg'.format(i))
                         save_images(completed[:batchSz,:,:,:], [nRows,nCols], imgName)
 
                 if config.approach == 'adam':
@@ -436,65 +438,6 @@ Initializing a new one.
 
                 else:
                     assert(False)
-
-    def reconstruct(self,config):
-
-        try:
-            tf.global_variables_initializer().run()
-        except:
-            tf.initialize_all_variables().run()
-
-        true_image_files = batch_preprocess.create_file_list(image_dir = self.images_dir,num_samples = config.num_images,sample=True)
-
-        batch_idxs = int(config.num_images/self.batch_size)
-
-        # Create dir structure
-        if os.path.exists(config.outDir):
-            shutil.rmtree(config.outDir)
-
-        os.makedirs(config.outDir)
-
-        # Start threads for fetching batches
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(coord=coord,sess=self.sess)
-
-        for batch in range(0,batch_idxs):
-            # Generate a batch
-            batch = batch_preprocess.generate_batch(files = true_image_files, batch_size = self.batch_size, image_size = self.image_size)
-            # Store the image in sub-dir as a true image
-            batch_dir = os.path.join(config.outDir,'{:04d}'.format(batch_idxs))
-            os.makedirs(batch_dir)
-            #save_images(batch,[1,1],os.path.join(batch_dir,'true_image.jpg'))
-            # Sample a random z
-            zhats = np.random.uniform(-1, 1, size=(self.batch_size, self.z_dim))
-            m = 0
-            v = 0
-
-            true_image = batch.eval(session = self.sess)
-
-            for step in range(0,config.nIter):
-                fd = {
-                        self.images : true_image,
-                        self.z : zhats,
-                        self.is_training: False,
-                     }
-                # Generate image from z
-                G_img,complete_loss,z_grads = self.sess.run([self.G,self.recon_total_loss,self.recon_loss_grad],feed_dict = fd)
-
-                # Can't use tf.train.AdamOptimizer to update z's because z's are placeholders and not "variables"
-                m_prev = np.copy(m)
-                v_prev = np.copy(v)
-                m = config.beta1 * m_prev + (1 - config.beta1) * z_grads[0]
-                v = config.beta2 * v_prev + (1 - config.beta2) * np.multiply(z_grads[0], z_grads[0])
-                m_hat = m / (1 - config.beta1 ** (step + 1))
-                v_hat = v / (1 - config.beta2 ** (step + 1))
-                zhats += - np.true_divide(config.lr * m_hat, (np.sqrt(v_hat) + config.eps))
-                zhats = np.clip(zhats, -1, 1)
-                if step%100:
-                    print('Iteration {} :: Reconstruction loss for image {} = {}'.format(step,batch_idxs,complete_loss))
-
-            # Save the reconstructed image
-            save_images(G_img,[1,1],os.path.join(batch_dir,'recon.jpg'))
 
 
     def discriminator(self, image, reuse=False, compare = False):
