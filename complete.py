@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--approach', type=str,
                     choices=['adam', 'hmc'],
                     default='adam')
-parser.add_argument('--lr', type=float, default=0.01)
+parser.add_argument('--lr', type=float, default=0.001)
 parser.add_argument('--beta1', type=float, default=0.9)
 parser.add_argument('--beta2', type=float, default=0.999)
 parser.add_argument('--eps', type=float, default=1e-8)
@@ -34,7 +34,7 @@ parser.add_argument('--maskType', type=str,
                     choices=['random', 'center', 'left', 'full', 'grid', 'lowres'],
                     default='center')
 parser.add_argument('--centerScale', type=float, default=0.4)
-parser.add_argument('--imgs', type=str, default='test_set') # Directory with the test images
+parser.add_argument('--imgs', type=str, default='data/celebA') # Directory with the test images
 
 args = parser.parse_args()
 

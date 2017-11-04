@@ -8,7 +8,7 @@ import cv2
 import os
 import random
 import tensorflow as tf
-
+import utils
 
 # TODO : Remove hard-coded path
 
@@ -41,6 +41,7 @@ def convert_file_format(files,size):
     image.set_shape((size,size,3))
     return image
 
+# TODO : Get thread based pre-fetch to work
 def generate_batch(files,batch_size,image_size):
 
     image = convert_file_format(files,image_size)
@@ -59,6 +60,11 @@ def generate_batch(files,batch_size,image_size):
                  1.)
     return normImages
 
+def create_image_list(image_dir,image_size,num_samples = 50, sample = True):
+    fileList = create_file_list(image_dir,num_samples,sample)
+    # Read images from filenames
+    imageList = [utils.get_image(sample_file,image_size = image_size,is_crop = False) for sample_file in fileList]
+    return imageList
 
 if __name__ == '__main__':
     """
