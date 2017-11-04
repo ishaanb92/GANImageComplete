@@ -35,6 +35,7 @@ parser.add_argument('--maskType', type=str,
                     default='center')
 parser.add_argument('--centerScale', type=float, default=0.4)
 parser.add_argument('--imgs', type=str, default='data/celebA') # Directory with the test images
+parser.add_argument('--numSamples',type=int,default=10)
 
 args = parser.parse_args()
 

@@ -282,7 +282,7 @@ Initializing a new one.
         assert(isLoaded)
 
         # Get list of all images from the test_dir
-        testImgs = batch_preprocess.create_file_list(image_dir = config.imgs,num_samples = 10)
+        testImgs = batch_preprocess.create_file_list(image_dir = config.imgs,num_samples = config.numSamples)
         nImgs = len(testImgs)
         print('Number of images : {}'.format(nImgs))
 
