@@ -321,6 +321,8 @@ Initializing a new one.
 
             outDir = os.path.join(config.outDir,'{:04d}'.format(idx))
             os.makedirs(outDir)
+            genDir = os.path.join(outDir,'gen_images')
+            os.makedirs(genDir)
             logPath = os.path.join(outDir,'logs')
             os.makedirs(logPath)
             l = idx*self.batch_size
@@ -382,7 +384,7 @@ Initializing a new one.
 
                 if i % config.outInterval == 0:
                     print(i, np.mean(loss[0:batchSz]))
-                    imgName = os.path.join(outDir,
+                    imgName = os.path.join(genDir,
                                            'gen_{:04d}.jpg'.format(i))
                     nRows = np.ceil(batchSz/8)
                     nCols = min(8, batchSz)
@@ -398,7 +400,7 @@ Initializing a new one.
                     if not reconstruct:
                         inv_masked_hat_images = np.multiply(G_imgs, 1.0-mask)
                         completed = masked_images + inv_masked_hat_images
-                        imgName = os.path.join(outDir,
+                        imgName = os.path.join(genDir,
                                                'completed_{:04d}.jpg'.format(i))
                         save_images(completed[:batchSz,:,:,:], [nRows,nCols], imgName)
 
