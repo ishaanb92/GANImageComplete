@@ -261,7 +261,6 @@ Initializing a new one.
 
     def complete(self, config,reconstruct = True):
 
-
         def make_dir(outDir,name):
             # Works on python 2.7, where exist_ok arg to makedirs isn't available.
             p = os.path.join(outDir, name)

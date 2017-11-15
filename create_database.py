@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 import os
 import argparse
-import batch_preprocess
 import shutil
 import random
+import sys
 
 def create_database():
 
@@ -35,22 +35,34 @@ def create_database():
         os.makedirs(dumpDir)
         original_image = os.path.join(imgDir,'original.jpg')
         image_location = os.path.join(imgDir,'gen_images')
-        sampleFiles = batch_preprocess.create_file_list(image_location,num_samples = args.numGen,sample = True)
+        # Select last 3 iterations of generated images
+        sampleFiles = []
+        for step in range(3):
+            sampleFiles.append(os.path.join(image_location,'gen_{}.jpg'.format(1850 + step*50)))
         for imgFile in sampleFiles:
             shutil.copy2(imgFile,dumpDir)
         shutil.copy2(original_image,dumpDir)
-        noisyImages = add_noise(original_image,numNoisy=3)
+        noisyImages = add_noise(original_image,noiseType = "blur", numNoisy=3)
         for idx,nImg in zip(range(len(noisyImages)),noisyImages):
             cv2.imwrite(os.path.join(dumpDir,'noisy_{}.jpg'.format(idx)),nImg)
 
 
-def add_noise(imagePath,numNoisy):
+def add_noise(imagePath,noiseType = "blur",numNoisy = 3):
     trueImage = cv2.imread(imagePath)
     noisyImages = []
-    for steps in range(numNoisy):
-        noisyImages.append(add_random_noise(trueImage,prob = 0.02))
+    if noiseType == "random":
+        for steps in range(numNoisy):
+            noisyImages.append(add_random_noise(trueImage,prob = 0.02))
+    elif noiseType == "blur":
+        noisyImages.append(add_blur(trueImage,5))
+        noisyImages.append(add_blur(trueImage,9))
+    else:
+        print('Noise type not supported')
+        sys.exit()
     return noisyImages
 
+def add_blur(image,kernelSize):
+    return cv2.GaussianBlur(image,(kernelSize,kernelSize),0)
 
 def add_random_noise(image,prob):
     noisyImage = np.zeros(image.shape,np.uint8)
