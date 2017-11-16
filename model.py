@@ -148,12 +148,14 @@ class DCGAN(object):
         # Completion.
         self.mask = tf.placeholder(tf.float32, self.image_shape, name='mask')
         self.lowres_mask = tf.placeholder(tf.float32, self.lowres_shape, name='lowres_mask')
+        # Reduce the difference in the masked part
         self.contextual_loss = tf.reduce_sum(
             tf.contrib.layers.flatten(
                 tf.abs(tf.multiply(self.mask, self.G) - tf.multiply(self.mask, self.images))), 1)
         self.contextual_loss += tf.reduce_sum(
             tf.contrib.layers.flatten(
                 tf.abs(tf.multiply(self.lowres_mask, self.lowres_G) - tf.multiply(self.lowres_mask, self.lowres_images))), 1)
+        # The reconstructed/completed image must also "fool" the discriminator
         self.perceptual_loss = self.g_loss
         self.complete_loss = self.contextual_loss + self.lam*self.perceptual_loss
         self.grad_complete_loss = tf.gradients(self.complete_loss, self.z)
@@ -344,11 +346,15 @@ Initializing a new one.
             nRows = np.ceil(batchSz/8)
             nCols = min(8, batchSz)
             imgName = os.path.join(outDir,'original.jpg')
-            save_images(batch_images[:batchSz,:,:,:], [nRows,nCols],imgName)
+            masked_images = np.multiply(batch_images, mask)
             if not reconstruct:
-                masked_images = np.multiply(batch_images, mask)
+                save_images(batch_images[:batchSz,:,:,:], [nRows,nCols],imgName)
                 save_images(masked_images[:batchSz,:,:,:], [nRows,nCols],
                     os.path.join(outDir,'masked.jpg'.format(idx)))
+            else:
+                # For reconstruction the "masked" image is the original image
+                save_images(masked_images[:batchSz,:,:,:], [nRows,nCols],imgName)
+
             if lowres_mask.any():
                 lowres_images = np.reshape(batch_images, [self.batch_size, self.lowres_size, self.lowres,
                     self.lowres_size, self.lowres, self.c_dim]).mean(4).mean(2)
