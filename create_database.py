@@ -18,8 +18,7 @@ def create_database():
     parser = argparse.ArgumentParser()
     parser.add_argument('--inputDir',type=str,default ='recon')
     parser.add_argument('--outDir',type=str,default = 'database')
-    parser.add_argument('-numGen',type=int,default=10)
-    parser.add_argument('--numNoisy',type=int,default=5)
+    parser.add_argument('--numNoisy',type=int,default=2)
     args = parser.parse_args()
 
     if (os.path.exists(args.outDir)):

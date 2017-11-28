@@ -262,6 +262,11 @@ Initializing a new one.
 
 
     def complete(self, config,reconstruct = True):
+        """
+        Setting "reconstruct" to True converts the completion function
+        into a reconstruction function. The goal is to arrive at the "nearest neighbour"
+        w.r.t original image encoded with the latent vector space of the GAN.
+        """
 
         def make_dir(outDir,name):
             # Works on python 2.7, where exist_ok arg to makedirs isn't available.
