@@ -32,6 +32,8 @@ def create_database():
     for idx,imgDir in zip(range(len(image_dirs)),image_dirs):
         dumpDir = os.path.join(args.outDir,'{}'.format(idx))
         os.makedirs(dumpDir)
+        genDir = os.path.join(dumpDir,'gen')
+        os.makedirs(genDir)
         original_image = os.path.join(imgDir,'original.jpg')
         image_location = os.path.join(imgDir,'gen_images')
         # Select last 3 iterations of generated images
@@ -39,11 +41,11 @@ def create_database():
         for step in range(3):
             sampleFiles.append(os.path.join(image_location,'gen_{}.jpg'.format(1850 + step*50)))
         for imgFile in sampleFiles:
-            shutil.copy2(imgFile,dumpDir)
+            shutil.copy2(imgFile,genDir)
         shutil.copy2(original_image,dumpDir)
         noisyImages = add_noise(original_image,noiseType = "blur", numNoisy=3)
         for idx,nImg in zip(range(len(noisyImages)),noisyImages):
-            cv2.imwrite(os.path.join(dumpDir,'noisy_{}.jpg'.format(idx)),nImg)
+            cv2.imwrite(os.path.join(genDir,'noisy_{}.jpg'.format(idx)),nImg)
 
 
 def add_noise(imagePath,noiseType = "blur",numNoisy = 3):
