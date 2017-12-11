@@ -39,7 +39,10 @@ def create_database():
         # Select last 3 iterations of generated images
         sampleFiles = []
         for step in range(3):
-            sampleFiles.append(os.path.join(image_location,'gen_{}.jpg'.format(1850 + step*50)))
+            if step == 0: #Ugly hack to get past file naming convention
+                sampleFiles.append(os.path.join(image_location,'gen_0{}.jpg'.format(950 + step*500)))
+            else:
+                sampleFiles.append(os.path.join(image_location,'gen_{}.jpg'.format(950 + step*500)))
         for imgFile in sampleFiles:
             shutil.copy2(imgFile,genDir)
         shutil.copy2(original_image,dumpDir)
