@@ -17,6 +17,7 @@ import sys
 import batch_preprocess
 from ops import *
 from utils import *
+import pickle
 
 SUPPORTED_EXTENSIONS = ["png", "jpg", "jpeg"]
 
@@ -261,7 +262,7 @@ Initializing a new one.
                     self.save(config.checkpoint_dir, counter)
 
 
-    def complete(self, config,reconstruct = True):
+    def complete(self, config,reconstruct = False):
         """
         Setting "reconstruct" to True converts the completion function
         into a reconstruction function. The goal is to arrive at the "nearest neighbour"
@@ -288,12 +289,17 @@ Initializing a new one.
         assert(isLoaded)
 
         # Get list of all images from the test_dir
-        testImgs = batch_preprocess.create_file_list(image_dir = config.imgs,num_samples = config.numSamples)
+        #testImgs = batch_preprocess.create_file_list(image_dir = config.imgs,num_samples = config.numSamples)
+        with open('test_images.pkl','rb') as f:
+            testImgs = pickle.load(f)
+
         nImgs = len(testImgs)
         print('Number of images : {}'.format(nImgs))
 
         batch_idxs = int(np.ceil(nImgs/self.batch_size))
         lowres_mask = np.zeros(self.lowres_shape)
+        patch_size = 16
+        crop_pos = 24
         if reconstruct:
             mask = np.ones(self.image_shape)
         else:
@@ -305,8 +311,10 @@ Initializing a new one.
                 assert(config.centerScale <= 0.5)
                 mask = np.ones(self.image_shape)
                 sz = self.image_size
-                l = int(self.image_size*config.centerScale)
-                u = int(self.image_size*(1.0-config.centerScale))
+                #l = int(self.image_size*config.centerScale)
+                #u = int(self.image_size*(1.0-config.centerScale))
+                l = int(crop_pos)
+                u = int(crop_pos + patch_size)
                 mask[l:u, l:u, :] = 0.0
             elif config.maskType == 'left':
                 mask = np.ones(self.image_shape)
@@ -398,7 +406,8 @@ Initializing a new one.
                                            'gen_{:04d}.jpg'.format(i))
                     nRows = np.ceil(batchSz/8)
                     nCols = min(8, batchSz)
-                    save_images(G_imgs[:batchSz,:,:,:], [nRows,nCols], imgName)
+                    if reconstruct:
+                        save_images(G_imgs[:batchSz,:,:,:], [nRows,nCols], imgName)
 
                     if lowres_mask.any():
                         imgName = imgName[:-4] + '.lowres.jpg'

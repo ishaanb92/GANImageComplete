@@ -28,7 +28,7 @@ parser.add_argument('--nIter', type=int, default=4000)
 parser.add_argument('--imgSize', type=int, default=64)
 parser.add_argument('--lam', type=float, default=0.05)
 parser.add_argument('--checkpointDir', type=str, default='checkpoint')
-parser.add_argument('--outDir', type=str, default='completions')
+parser.add_argument('--outDir', type=str, default='recons_mturk')
 parser.add_argument('--outInterval', type=int, default=50)
 parser.add_argument('--maskType', type=str,
                     choices=['random', 'center', 'left', 'full', 'grid', 'lowres'],
@@ -48,4 +48,4 @@ with tf.Session(config=config) as sess:
     dcgan = DCGAN(sess, image_size=args.imgSize,
                   batch_size=1,
                   checkpoint_dir=args.checkpointDir, lam=args.lam)
-    dcgan.complete(args)
+    dcgan.complete(args,reconstruct = False)
