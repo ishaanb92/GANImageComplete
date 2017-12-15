@@ -13,10 +13,49 @@ import pprint
 import scipy.misc
 import numpy as np
 from time import gmtime, strftime
+import skimage.io
+import skimage.transform
 
 pp = pprint.PrettyPrinter()
 
 get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
+
+
+
+def load_image( path, pre_height=146, pre_width=146, width=128, height=128 ):
+    """
+    Copy over function from AE/CE code to make image reading (centering of image)
+    uniform
+
+    """
+
+    try:
+        img = cv2.imread( path ).astype(np.float)
+    except:
+        return None
+
+    img /= 255 # Scale to 0-1 range
+
+    if img is None: return None
+    if len(img.shape) < 2: return None
+    if len(img.shape) == 4: return None
+    if len(img.shape) == 2: img=np.tile(img[:,:,None], 3)
+    if img.shape[2] == 4: img=img[:,:,:3]
+    if img.shape[2] > 4: return None
+
+    short_edge = min( img.shape[:2] )
+    yy = int((img.shape[0] - short_edge) / 2)
+    xx = int((img.shape[1] - short_edge) / 2)
+    crop_img = img[yy:yy+short_edge, xx:xx+short_edge]
+    resized_img = skimage.transform.resize( crop_img, [pre_height,pre_width],mode = 'constant')
+
+    rand_y = np.random.randint(0, pre_height - height)
+    rand_x = np.random.randint(0, pre_width - width)
+
+    resized_img = resized_img[ rand_y:rand_y+height, rand_x:rand_x+width, : ]
+
+    # Scale to [-1,1]
+    return (resized_img * 2)-1 #(resized_img - 127.5)/127.5
 
 def get_image(image_path, image_size, is_crop=True):
     return transform(imread(image_path), image_size, is_crop)
@@ -44,19 +83,26 @@ def imsave(images, size, path):
     img = merge(images, size)
     return scipy.misc.imsave(path, (255*img).astype(np.uint8))
 
-def center_crop(x, crop_h, crop_w=None, resize_w=64):
+def center_crop(x = None, crop_h = 64, crop_w=None, resize_w = None):
     if crop_w is None:
         crop_w = crop_h
-    h, w = x.shape[:2]
-    j = int(round((h - crop_h)/2.))
-    i = int(round((w - crop_w)/2.))
-    return scipy.misc.imresize(x[j:j+crop_h, i:i+crop_w],
-                               [resize_w, resize_w])
+    short_edge = min(x.shape[:2])
+    j = int((x.shape[0] - short_edge)/2)
+    i = int((x.shape[1] - short_edge)/2)
+    # Making crop compliant with AE/CE code -- Ishaan
+    crop_img = x[j:j+short_edge, i:i+short_edge]
+    resized_img = skimage.transform.resize(crop_img,[resize_w,resize_w],mode='constant')
+
+    rand_y = np.random.randint(0, resize_w - crop_h)
+    rand_x = np.random.randint(0, resize_w-  crop_w)
+
+    resized_img = resized_img[ rand_y:rand_y+crop_h, rand_x:rand_x+crop_w, : ]
+    return resized_img
 
 def transform(image, npx=64, is_crop=True):
     # npx : # of pixels width/height of image
     if is_crop:
-        cropped_image = center_crop(image, npx)
+        cropped_image = center_crop(x = image, crop_h = npx, resize_w = npx+18)
     else: # Added by Ishaan
        # cropped_image = image
        # Resize the image

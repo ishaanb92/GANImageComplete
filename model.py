@@ -333,7 +333,7 @@ Initializing a new one.
 
         for idx in xrange(0, batch_idxs):
 
-            outDir = os.path.join(config.outDir,'{:04d}'.format(idx))
+            outDir = os.path.join(config.outDir,'{}'.format(idx))
             os.makedirs(outDir)
             genDir = os.path.join(outDir,'gen_images')
             os.makedirs(genDir)
@@ -343,7 +343,7 @@ Initializing a new one.
             u = min((idx+1)*self.batch_size, nImgs)
             batchSz = u-l
             batch_files = testImgs[l:u]
-            batch = [get_image(batch_file, self.image_size, is_crop=self.is_crop)
+            batch = [get_image(batch_file, self.image_size, is_crop=True)
                      for batch_file in batch_files]
             batch_images = np.array(batch).astype(np.float32)
             if batchSz < self.batch_size:

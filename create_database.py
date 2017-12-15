@@ -16,7 +16,6 @@ def create_database():
 
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument('--inputDir',type=str,default ='recon')
     parser.add_argument('--outDir',type=str,default = 'database')
     parser.add_argument('--numNoisy',type=int,default=2)
     args = parser.parse_args()
@@ -26,27 +25,46 @@ def create_database():
         shutil.rmtree(args.outDir)
 
     os.makedirs(args.outDir)
+    image_files_gan = 'recons_mturk'
+    image_files_ce = '/home/ibhat/context_enc/Context-Encoder/src/test_dump'
+    image_files_ae = '/home/ibhat/context_enc/Context-Encoder/src_vanilla/test_dump'
 
-    image_dirs = [os.path.join(args.inputDir,d) for d in os.listdir(args.inputDir) if os.path.isdir(os.path.join(args.inputDir,d))]
+    image_dirs_gan = [os.path.join(image_files_gan,d) for d in os.listdir(image_files_gan) if os.path.isdir(os.path.join(image_files_gan,d))]
+    image_dirs_gan = sorted(image_dirs_gan)
 
-    for idx,imgDir in zip(range(len(image_dirs)),image_dirs):
+    image_dirs_ce = [os.path.join(image_files_ce,d) for d in os.listdir(image_files_ce) if os.path.isdir(os.path.join(image_files_ce,d))]
+    image_dirs_ce = sorted(image_dirs_ce)
+
+
+    image_dirs_ae = [os.path.join(image_files_ae,d) for d in os.listdir(image_files_ae) if os.path.isdir(os.path.join(image_files_ae))]
+    image_dirs_ae = sorted(image_dirs_ae)
+
+    for idx,gan_dir,ce_dir,ae_dir in zip(range(10),image_dirs_gan,image_dirs_ce,image_dirs_ae):
         dumpDir = os.path.join(args.outDir,'{}'.format(idx))
         os.makedirs(dumpDir)
+        # Make the sub-folder
         genDir = os.path.join(dumpDir,'gen')
         os.makedirs(genDir)
-        original_image = os.path.join(imgDir,'original.jpg')
-        image_location = os.path.join(imgDir,'gen_images')
-        # Select last 3 iterations of generated images
-        sampleFiles = []
-        for step in range(3):
-            if step == 0: #Ugly hack to get past file naming convention
-                sampleFiles.append(os.path.join(image_location,'gen_0{}.jpg'.format(950 + step*500)))
-            else:
-                sampleFiles.append(os.path.join(image_location,'gen_{}.jpg'.format(950 + step*500)))
-        for imgFile in sampleFiles:
-            shutil.copy2(imgFile,genDir)
+        original_image = os.path.join(gan_dir,'original.jpg')
+        # Copy over the original image
         shutil.copy2(original_image,dumpDir)
-        noisyImages = add_noise(original_image,noiseType = "blur", numNoisy=3)
+
+        # Get paths from each model dump
+        gan_image = os.path.join(gan_dir,'gen_images','completed_3950.jpg')
+        ce_image = os.path.join(ce_dir,'recon.jpg')
+        ae_image = os.path.join(ae_dir,'recon.jpg')
+
+        # Create destination paths
+        gan_dump = os.path.join(genDir,'gan.jpg')
+        ce_dump = os.path.join(genDir,'ce.jpg')
+        ae_dump = os.path.join(genDir,'ae.jpg')
+
+        #Copy
+        shutil.copy(gan_image,gan_dump)
+        shutil.copy(ce_image,ce_dump)
+        shutil.copy(ae_image,ae_dump)
+
+        noisyImages = add_noise(original_image,noiseType = "blur", numNoisy=1)
         for idx,nImg in zip(range(len(noisyImages)),noisyImages):
             cv2.imwrite(os.path.join(genDir,'noisy_{}.jpg'.format(idx)),nImg)
 
@@ -59,7 +77,6 @@ def add_noise(imagePath,noiseType = "blur",numNoisy = 3):
             noisyImages.append(add_random_noise(trueImage,prob = 0.02))
     elif noiseType == "blur":
         noisyImages.append(add_blur(trueImage,5))
-        noisyImages.append(add_blur(trueImage,9))
     else:
         print('Noise type not supported')
         sys.exit()
