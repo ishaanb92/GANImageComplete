@@ -39,7 +39,7 @@ def create_database():
     image_dirs_ae = [os.path.join(image_files_ae,d) for d in os.listdir(image_files_ae) if os.path.isdir(os.path.join(image_files_ae))]
     image_dirs_ae = sorted(image_dirs_ae)
 
-    for idx,gan_dir,ce_dir,ae_dir in zip(range(10),image_dirs_gan,image_dirs_ce,image_dirs_ae):
+    for idx,gan_dir,ce_dir,ae_dir in zip(range(len(image_dirs_gan)),image_dirs_gan,image_dirs_ce,image_dirs_ae):
         dumpDir = os.path.join(args.outDir,'{}'.format(idx))
         os.makedirs(dumpDir)
         # Make the sub-folder
