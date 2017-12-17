@@ -93,9 +93,10 @@ def center_crop(x = None, crop_h = 64, crop_w=None, resize_w = None):
     crop_img = x[j:j+short_edge, i:i+short_edge]
     resized_img = skimage.transform.resize(crop_img,[resize_w,resize_w],mode='constant')
 
-    rand_y = np.random.randint(0, resize_w - crop_h)
-    rand_x = np.random.randint(0, resize_w-  crop_w)
-
+    #rand_y = np.random.randint(0, resize_w - crop_h)
+    #rand_x = np.random.randint(0, resize_w - crop_w)
+    rand_y = 10
+    rand_x = 10
     resized_img = resized_img[ rand_y:rand_y+crop_h, rand_x:rand_x+crop_w, : ]
     return resized_img
 
